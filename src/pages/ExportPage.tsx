@@ -4,6 +4,7 @@ import { useStore, useActivePlan } from '../store/appStore';
 import { buildTeacherSchedules, exportCSV, exportExcel } from '../lib/exporters';
 import { PageHeader, EmptyState } from '../components/ui';
 import { IconDownload, IconPrint } from '../components/icons';
+import CloudPanel from '../components/CloudPanel';
 
 export default function ExportPage() {
   const plan = useActivePlan();
@@ -82,6 +83,10 @@ export default function ExportPage() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="no-print mt-4">
+        <CloudPanel />
       </div>
 
       <div className="no-print mt-6">
