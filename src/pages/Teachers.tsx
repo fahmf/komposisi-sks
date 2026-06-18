@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../store/appStore';
-import type { Gender, Level, Teacher } from '../types/model';
+import type { Gender, Level, SemesterNo, Teacher } from '../types/model';
 import { LEVEL_LABELS, parseQualKey, qualKey } from '../types/model';
 import { Field, Modal, PageHeader, EmptyState } from '../components/ui';
 import { IconEdit, IconPlus, IconTrash, IconUsers } from '../components/icons';
@@ -17,7 +17,7 @@ interface Draft {
 const emptyDraft: Draft = {
   name: '',
   gender: 'L',
-  maxSks: 32,
+  maxSks: 24,
   qualifiedKeys: [],
   active: true,
   note: '',
@@ -36,17 +36,18 @@ export default function Teachers() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [subjectSemester, setSubjectSemester] = useState<SemesterNo>(1);
 
   const sorted = useMemo(
     () => [...teachers].sort((a, b) => a.gender.localeCompare(b.gender) || a.name.localeCompare(b.name)),
     [teachers],
   );
 
-  // Subjects per jenjang (from master curriculum), each with its per-semester SKS.
-  const subjectsByLevel = (level: Level) => {
+  // Subjects per jenjang (from master curriculum), filtered to the selected semester.
+  const subjectsByLevel = (level: Level, semester: SemesterNo) => {
     const m = new Map<string, { id: string; name: string; isTahfidz: boolean; sems: { semester: number; sks: number }[] }>();
     for (const e of master) {
-      if (e.level !== level) continue;
+      if (e.level !== level || e.semester !== semester) continue;
       const subject = subjects.find((s) => s.id === e.subjectId);
       if (!subject) continue;
       let rec = m.get(e.subjectId);
@@ -208,13 +209,27 @@ export default function Teachers() {
           </div>
 
           <div>
-            <span className="label">Mata kuliah yang bisa diajar (dipisah per jenjang)</span>
-            <p className="mb-2 text-[11px] text-slate-400">
-              Kualifikasi Pemula & Lanjutan terpisah. Angka di kanan = SKS per semester (S1 / S2).
-            </p>
+            <div className="mb-2 grid gap-2 sm:grid-cols-[1fr_180px] sm:items-end">
+              <div>
+                <span className="label">Mata kuliah yang bisa diajar (dipisah per jenjang)</span>
+                <p className="text-[11px] text-slate-400">
+                  Kualifikasi Pemula & Lanjutan terpisah. Daftar di bawah mengikuti semester yang dipilih.
+                </p>
+              </div>
+              <Field label="Semester">
+                <select
+                  className="input"
+                  value={subjectSemester}
+                  onChange={(e) => setSubjectSemester(Number(e.target.value) as SemesterNo)}
+                >
+                  <option value={1}>Semester 1</option>
+                  <option value={2}>Semester 2</option>
+                </select>
+              </Field>
+            </div>
             <div className="max-h-72 space-y-3 overflow-y-auto rounded-xl border border-slate-200 p-2 dark:border-slate-700">
               {LEVELS.map((level) => {
-                const list = subjectsByLevel(level);
+                const list = subjectsByLevel(level, subjectSemester);
                 if (list.length === 0) return null;
                 return (
                   <div key={level}>
