@@ -140,6 +140,62 @@ export default function Teachers() {
         : [...d.qualifiedKeys, key],
     }));
 
+  const renderTeacherCard = (t: Teacher) => {
+    const subs = t.qualifiedKeys
+      .map((k) => {
+        const { level, subjectId } = parseQualKey(k);
+        const name = subjects.find((s) => s.id === subjectId)?.name;
+        return name ? { name, level } : null;
+      })
+      .filter((x): x is { name: string; level: Level } => x !== null)
+      .sort((a, b) => a.level.localeCompare(b.level) || a.name.localeCompare(b.name));
+    return (
+      <div key={t.id} className="card p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className={`badge ${t.gender === 'L' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300' : 'bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300'}`}>
+                {t.gender === 'L' ? 'Putra' : 'Putri'}
+              </span>
+              {!t.active && <span className="badge bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">Nonaktif</span>}
+            </div>
+            <p className="mt-1.5 truncate font-semibold">{t.name}</p>
+            <p className="text-xs text-slate-500">Kuota maks {t.maxSks} SKS</p>
+          </div>
+          <div className="flex shrink-0 gap-1">
+            <button className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800" onClick={() => openEdit(t)} aria-label="Edit">
+              <IconEdit width={16} height={16} />
+            </button>
+            <button
+              className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/30"
+              onClick={() => {
+                if (confirm(`Hapus pengajar "${t.name}"?`)) deleteTeacher(t.id);
+              }}
+              aria-label="Hapus"
+            >
+              <IconTrash width={16} height={16} />
+            </button>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1">
+          {subs.length === 0 ? (
+            <span className="text-xs text-amber-600">Belum ada mata kuliah</span>
+          ) : (
+            subs.map((s, i) => (
+              <span
+                key={i}
+                className={`badge ${s.level === 'ILP' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'}`}
+                title={LEVEL_LABELS[s.level]}
+              >
+                {s.name} · {s.level}
+              </span>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <PageHeader
@@ -183,63 +239,21 @@ export default function Teachers() {
           }
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {sorted.map((t) => {
-            const subs = t.qualifiedKeys
-              .map((k) => {
-                const { level, subjectId } = parseQualKey(k);
-                const name = subjects.find((s) => s.id === subjectId)?.name;
-                return name ? { name, level } : null;
-              })
-              .filter((x): x is { name: string; level: Level } => x !== null)
-              .sort((a, b) => a.level.localeCompare(b.level) || a.name.localeCompare(b.name));
-            return (
-              <div key={t.id} className="card p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className={`badge ${t.gender === 'L' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300' : 'bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300'}`}>
-                        {t.gender === 'L' ? 'Putra' : 'Putri'}
-                      </span>
-                      {!t.active && <span className="badge bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">Nonaktif</span>}
-                    </div>
-                    <p className="mt-1.5 truncate font-semibold">{t.name}</p>
-                    <p className="text-xs text-slate-500">Kuota maks {t.maxSks} SKS</p>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <button className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800" onClick={() => openEdit(t)} aria-label="Edit">
-                      <IconEdit width={16} height={16} />
-                    </button>
-                    <button
-                      className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/30"
-                      onClick={() => {
-                        if (confirm(`Hapus pengajar "${t.name}"?`)) deleteTeacher(t.id);
-                      }}
-                      aria-label="Hapus"
-                    >
-                      <IconTrash width={16} height={16} />
-                    </button>
-                  </div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-1">
-                  {subs.length === 0 ? (
-                    <span className="text-xs text-amber-600">Belum ada mata kuliah</span>
-                  ) : (
-                    subs.map((s, i) => (
-                      <span
-                        key={i}
-                        className={`badge ${s.level === 'ILP' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'}`}
-                        title={LEVEL_LABELS[s.level]}
-                      >
-                        {s.name} · {s.level}
-                      </span>
-                    ))
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        (['L', 'P'] as Gender[]).map((g) => {
+          const list = sorted.filter((t) => t.gender === g);
+          if (list.length === 0) return null;
+          return (
+            <div key={g} className="mb-6">
+              <h2 className="mb-2 flex items-center gap-2">
+                <span className={`badge ${g === 'L' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300' : 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300'}`}>
+                  {g === 'L' ? 'Putra' : 'Putri'}
+                </span>
+                <span className="text-xs text-slate-400">{list.length} pengajar</span>
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2">{list.map(renderTeacherCard)}</div>
+            </div>
+          );
+        })
       )}
 
       <Modal open={open} onClose={() => setOpen(false)} title={editId ? 'Edit pengajar' : 'Tambah pengajar'} wide>

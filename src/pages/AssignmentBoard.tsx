@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore, useActivePlan } from '../store/appStore';
-import type { IssueCode, Slot } from '../types/model';
+import type { Gender, IssueCode, Slot, Teacher } from '../types/model';
 import { LEVEL_LABELS, SECTION_LABELS } from '../types/model';
 import { computeTeacherLoads, validatePlan } from '../solver/validate';
 import { eligibleTeachers, groupedClasses, subjMap } from '../lib/derived';
@@ -62,8 +62,18 @@ export default function AssignmentBoard() {
     const slotHardError = new Set(
       report.issues.filter((i) => i.slotId && HARD_SLOT_CODES.includes(i.code)).map((i) => i.slotId!),
     );
+    // Count how many slots each teacher holds within a single class, to flag when
+    // the same teacher teaches ≥2 subjects in one class (tahfidz included).
+    const classTeacherCount = new Map<string, Map<string, number>>(); // classGroupId -> teacherId -> count
+    for (const slot of plan.slots) {
+      const tid = assignmentBySlot.get(slot.id)?.teacherId;
+      if (!tid) continue;
+      let m = classTeacherCount.get(slot.classGroupId);
+      if (!m) classTeacherCount.set(slot.classGroupId, (m = new Map()));
+      m.set(tid, (m.get(tid) ?? 0) + 1);
+    }
     const assignedCount = plan.assignments.filter((a) => a.teacherId).length;
-    return { sm, report, loads, assignmentBySlot, slotByClassSubject, teacherTone, slotHardError, assignedCount };
+    return { sm, report, loads, assignmentBySlot, slotByClassSubject, teacherTone, slotHardError, classTeacherCount, assignedCount };
   }, [plan, teachers, subjects]);
 
   const teacherSchedules = useMemo(() => {
@@ -74,7 +84,7 @@ export default function AssignmentBoard() {
   if (!plan) return <EmptyState title="Belum ada semester aktif" hint="Buat semester di menu Pengaturan." />;
   if (!derived) return null;
 
-  const { report, loads, assignmentBySlot, slotByClassSubject, teacherTone, slotHardError, assignedCount } = derived;
+  const { report, loads, assignmentBySlot, slotByClassSubject, teacherTone, slotHardError, classTeacherCount, assignedCount } = derived;
   const groups = groupedClasses(plan);
   const totalSlots = plan.slots.length;
 
@@ -97,7 +107,8 @@ export default function AssignmentBoard() {
           ? 'warn'
           : 'ok';
     const currentName = teacherId ? teachers.find((t) => t.id === teacherId)?.name : undefined;
-    return { teacherId, locked, eligible, tone, currentName };
+    const dupCount = teacherId ? (classTeacherCount.get(slot.classGroupId)?.get(teacherId) ?? 0) : 0;
+    return { teacherId, locked, eligible, tone, currentName, dupCount };
   };
 
   const getSlot = (classGroupId: string, subjectId: string) => slotByClassSubject.get(`${classGroupId}|${subjectId}`);
@@ -113,6 +124,7 @@ export default function AssignmentBoard() {
         currentName={cell.currentName}
         subjectName={derived.sm.get(slot.subjectId)?.name}
         tone={cell.tone}
+        dupCount={cell.dupCount}
         onChange={(tid) => setAssignment(slot.id, tid)}
         onToggleLock={() => toggleLock(slot.id)}
       />
@@ -126,6 +138,44 @@ export default function AssignmentBoard() {
   const teacherOptions = [...teachers].sort(
     (a, b) => a.gender.localeCompare(b.gender) || a.name.localeCompare(b.name),
   );
+  const renderLoadCard = (t: Teacher) => {
+    const tl = loads.get(t.id)!;
+    const pct = tl.relaxedTarget > 0 ? Math.min(100, (tl.load / tl.relaxedTarget) * 100) : 100;
+    const tone = teacherTone.get(t.id);
+    const barColor =
+      tone === 'error'
+        ? 'bg-rose-500'
+        : tl.load >= tl.relaxedTarget
+          ? 'bg-emerald-500'
+          : tone === 'warn'
+            ? 'bg-amber-400'
+            : 'bg-brand-500';
+    return (
+      <button
+        key={t.id}
+        type="button"
+        onClick={() => {
+          setBoardView('teacher');
+          setTeacherFilter(t.id);
+        }}
+        className="card p-3 text-left transition hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+      >
+        <div className="flex items-center justify-between">
+          <span className="truncate text-sm font-semibold">{t.name}</span>
+          <span className="text-xs text-slate-500">
+            {tl.load}/{t.maxSks}
+          </span>
+        </div>
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+          <div className={`h-full ${barColor}`} style={{ width: `${pct}%` }} />
+        </div>
+        <p className="mt-1 text-[11px] text-slate-400">
+          target {tl.relaxedTarget} SKS{tl.load >= tl.relaxedTarget ? ' ok' : ''}
+        </p>
+      </button>
+    );
+  };
+
   const scheduleByTeacher = new Map(teacherSchedules.map((s) => [s.teacher.id, s]));
   const visibleTeacherSchedules =
     teacherFilter === 'all'
@@ -212,46 +262,25 @@ export default function AssignmentBoard() {
           )}
 
           <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">Beban pengajar</h2>
-          <div className="mb-6 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {sortedTeachers.map((t) => {
-              const tl = loads.get(t.id)!;
-              const pct = tl.relaxedTarget > 0 ? Math.min(100, (tl.load / tl.relaxedTarget) * 100) : 100;
-              const tone = teacherTone.get(t.id);
-              const barColor =
-                tone === 'error'
-                  ? 'bg-rose-500'
-                  : tl.load >= tl.relaxedTarget
-                    ? 'bg-emerald-500'
-                    : tone === 'warn'
-                      ? 'bg-amber-400'
-                      : 'bg-brand-500';
+          {sortedTeachers.length === 0 ? (
+            <p className="mb-6 text-sm text-slate-400">Belum ada pengajar aktif.</p>
+          ) : (
+            (['L', 'P'] as Gender[]).map((g) => {
+              const list = sortedTeachers.filter((t) => t.gender === g);
+              if (list.length === 0) return null;
               return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => {
-                    setBoardView('teacher');
-                    setTeacherFilter(t.id);
-                  }}
-                  className="card p-3 text-left transition hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="truncate text-sm font-semibold">{t.name}</span>
-                    <span className="text-xs text-slate-500">
-                      {tl.load}/{t.maxSks}
+                <div key={g} className="mb-6">
+                  <h3 className="mb-2 flex items-center gap-2">
+                    <span className={`badge ${g === 'L' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300' : 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300'}`}>
+                      {g === 'L' ? 'Putra' : 'Putri'}
                     </span>
-                  </div>
-                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                    <div className={`h-full ${barColor}`} style={{ width: `${pct}%` }} />
-                  </div>
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    target {tl.relaxedTarget} SKS{tl.load >= tl.relaxedTarget ? ' ok' : ''}
-                  </p>
-                </button>
+                    <span className="text-xs text-slate-400">{list.length} pengajar</span>
+                  </h3>
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{list.map(renderLoadCard)}</div>
+                </div>
               );
-            })}
-            {sortedTeachers.length === 0 && <p className="text-sm text-slate-400">Belum ada pengajar aktif.</p>}
-          </div>
+            })
+          )}
 
           <div className="no-print mb-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap gap-2">

@@ -19,10 +19,20 @@ export default function MatrixPrint({
   const tm = teacherMap(teachers);
   const bySlot = new Map(plan.assignments.map((a) => [a.slotId, a]));
 
-  const teacherName = (classGroupId: string, subjectId: string): string => {
-    const a = bySlot.get(slotId(classGroupId, subjectId));
-    const tid = a?.teacherId;
-    return tid ? (tm.get(tid)?.name ?? '—') : '—';
+  // Count slots per teacher within each class to mark duplicates.
+  const classTeacherCount = new Map<string, Map<string, number>>();
+  for (const slot of plan.slots) {
+    const tid = bySlot.get(slot.id)?.teacherId;
+    if (!tid) continue;
+    let m = classTeacherCount.get(slot.classGroupId);
+    if (!m) classTeacherCount.set(slot.classGroupId, (m = new Map()));
+    m.set(tid, (m.get(tid) ?? 0) + 1);
+  }
+
+  const cell = (classGroupId: string, subjectId: string): { name: string; dup: number } => {
+    const tid = bySlot.get(slotId(classGroupId, subjectId))?.teacherId;
+    if (!tid) return { name: '—', dup: 0 };
+    return { name: tm.get(tid)?.name ?? '—', dup: classTeacherCount.get(classGroupId)?.get(tid) ?? 0 };
   };
 
   return (
@@ -57,11 +67,15 @@ export default function MatrixPrint({
                     <td className="border border-slate-400 px-2 py-1 font-semibold">
                       {c.label.split(' ').pop()}
                     </td>
-                    {entries.map((e) => (
-                      <td key={e.id} className="border border-slate-400 px-2 py-1">
-                        {teacherName(c.id, e.subjectId)}
-                      </td>
-                    ))}
+                    {entries.map((e) => {
+                      const { name, dup } = cell(c.id, e.subjectId);
+                      return (
+                        <td key={e.id} className="border border-slate-400 px-2 py-1">
+                          {name}
+                          {dup >= 2 && <span className="ml-1 font-bold"> ({dup}×)</span>}
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))}
               </tbody>

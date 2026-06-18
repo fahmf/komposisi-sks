@@ -15,6 +15,7 @@ export default function TeacherCell({
   currentName,
   subjectName,
   tone,
+  dupCount = 0,
   onChange,
   onToggleLock,
 }: {
@@ -25,6 +26,8 @@ export default function TeacherCell({
   currentName?: string;
   subjectName?: string;
   tone: 'ok' | 'warn' | 'error' | 'empty';
+  /** How many subjects this teacher holds in the same class (≥2 = flagged). */
+  dupCount?: number;
   onChange: (teacherId: string | null) => void;
   onToggleLock: () => void;
 }) {
@@ -57,6 +60,14 @@ export default function TeacherCell({
           </option>
         ))}
       </select>
+      {teacherId && dupCount >= 2 && (
+        <span
+          className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+          title={`Pengajar ini mengampu ${dupCount} mata kuliah di kelas yang sama`}
+        >
+          {dupCount}×
+        </span>
+      )}
       {teacherId && (
         <button
           onClick={onToggleLock}
