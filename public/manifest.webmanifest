@@ -1,0 +1,21 @@
+{
+  "name": "Komposisi SKS",
+  "short_name": "Komposisi SKS",
+  "description": "Pembagian SKS pengajar per semester — ILP & ILL, putra & putri.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f8fafc",
+  "theme_color": "#23664e",
+  "lang": "id",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
