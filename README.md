@@ -28,7 +28,13 @@ pindah perangkat. Tampilan responsif — nyaman dibuka di HP maupun laptop.
   penyusunan otomatis dijalankan ulang.
 - **Diagnosa kekurangan pengajar** — bila tenaga pengajar kurang, aplikasi
   menyebutkan persis kekurangannya (mis. "butuh 1 pengajar Qiraah Putra").
-- **Output**: tampilan jadwal per-pengajar, **Cetak / PDF**, dan **Excel/CSV**.
+- **Impor massal pengajar** dari **CSV/Excel** (dengan template & pratinjau +
+  peringatan per baris sebelum disimpan).
+- **Output**: tampilan jadwal per-pengajar, **Cetak / PDF**, **cetak matriks**
+  (kelas × mata kuliah), dan **Excel/CSV**.
+- **PWA** — bisa **dipasang** (install) dan dipakai **offline** setelah kunjungan pertama.
+- **Cadangan cloud (opsional)** — sinkronisasi antar perangkat via Supabase bila
+  diaktifkan; lihat [`docs/SUPABASE.md`](docs/SUPABASE.md). Tanpa itu, app tetap 100% lokal.
 - Kurikulum 4 jenjang/semester sudah terisi sesuai panduan (bisa diedit).
 
 ## Menjalankan secara lokal
