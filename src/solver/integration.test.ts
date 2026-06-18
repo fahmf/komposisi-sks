@@ -21,25 +21,25 @@ function cls(id: string, section: 'putra' | 'putri', order: number): ClassGroup 
   return { id, section, level: 'ILP', semester: 1, label: `${section} ${order}`, order };
 }
 
-const t = (id: string, gender: 'L' | 'P', maxSks: number): Teacher => ({
+// One specialist per subject per section. With the "one subject per class" rule and
+// no 4-SKS subject in ILP-1 to pair with Hifzh, each class needs a distinct teacher
+// per subject, so a specialist roster keeps the instance feasible & deterministic.
+const mk = (id: string, gender: 'L' | 'P', subjectId: string, maxSks: number): Teacher => ({
   id,
   name: id,
   gender,
-  qualifiedKeys: ILP1.map((s) => `ILP:${s}`),
+  qualifiedKeys: [`ILP:${subjectId}`],
   maxSks,
   active: true,
 });
 
 describe('end-to-end distribution with seed curriculum', () => {
-  // 2 putra + 1 putri ILP-1 classes. Demand: putra 2*32=64, putri 32.
+  // 2 putra + 1 putri ILP-1 classes.
   const classGroups = [cls('p1', 'putra', 0), cls('p2', 'putra', 1), cls('q1', 'putri', 0)];
   const slots = buildSlots(classGroups, SEED_CURRICULUM, SEED_SUBJECTS);
   const teachers = [
-    t('M1', 'L', 24),
-    t('M2', 'L', 24),
-    t('M3', 'L', 24),
-    t('F1', 'P', 18),
-    t('F2', 'P', 18),
+    ...ILP1.map((s, i) => mk(`M${i}`, 'L', s, 24)),
+    ...ILP1.map((s, i) => mk(`F${i}`, 'P', s, 18)),
   ];
 
   const { assignments } = autoAssign({ slots, teachers, config });
@@ -73,6 +73,18 @@ describe('end-to-end distribution with seed curriculum', () => {
         expect(classes.size).toBeLessThanOrEqual(config.maxClassesPerSubjectPerTeacher);
       }
     }
+  });
+
+  it('never puts the same teacher in one class twice (no 4-SKS+Hifzh pair in ILP-1)', () => {
+    expect(report.issues.some((i) => i.code === 'TEACHER_TWICE_IN_CLASS')).toBe(false);
+    const perTeacherClass = new Map<string, number>();
+    for (const a of assignments) {
+      if (!a.teacherId) continue;
+      const slot = slots.find((s) => s.id === a.slotId)!;
+      const key = `${a.teacherId}|${slot.classGroupId}`;
+      perTeacherClass.set(key, (perTeacherClass.get(key) ?? 0) + 1);
+    }
+    for (const n of perTeacherClass.values()) expect(n).toBeLessThanOrEqual(1);
   });
 
   it('distributes load broadly (no idle active teacher when work remains)', () => {

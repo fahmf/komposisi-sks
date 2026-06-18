@@ -1,5 +1,5 @@
 import type { Assignment, PlanConfig, Slot, Teacher } from '../types/model';
-import { qualKey, sectionToGender } from '../types/model';
+import { isAllowedTeacherClassCombo, qualKey, sectionToGender } from '../types/model';
 
 // ---------------------------------------------------------------------------
 // Deterministic greedy construction + bounded local-search repair.
@@ -35,6 +35,8 @@ class SolverState {
   subjClasses = new Map<string, Map<string, Set<string>>>();
   // teacherId -> classGroupId -> non-tahfidz sks
   classLoad = new Map<string, Map<string, number>>();
+  // teacherId -> classGroupId -> slots held (tahfidz included) for the per-class rule
+  classSlots = new Map<string, Map<string, Slot[]>>();
   // slotId -> teacherId | null
   assign = new Map<string, string | null>();
 
@@ -50,9 +52,18 @@ class SolverState {
     return this.classLoad.get(t)?.get(classGroupId) ?? 0;
   }
 
+  slotsInClass(t: string, classGroupId: string): Slot[] {
+    return this.classSlots.get(t)?.get(classGroupId) ?? [];
+  }
+
   commit(teacherId: string, slot: Slot) {
     this.assign.set(slot.id, teacherId);
     this.load.set(teacherId, this.loadOf(teacherId) + slot.sks);
+    let bySlotClass = this.classSlots.get(teacherId);
+    if (!bySlotClass) this.classSlots.set(teacherId, (bySlotClass = new Map()));
+    const arr = bySlotClass.get(slot.classGroupId);
+    if (arr) arr.push(slot);
+    else bySlotClass.set(slot.classGroupId, [slot]);
     if (!slot.isTahfidz) {
       let bySubj = this.subjClasses.get(teacherId);
       if (!bySubj) this.subjClasses.set(teacherId, (bySubj = new Map()));
@@ -69,6 +80,12 @@ class SolverState {
   remove(teacherId: string, slot: Slot) {
     this.assign.set(slot.id, null);
     this.load.set(teacherId, this.loadOf(teacherId) - slot.sks);
+    const slotArr = this.classSlots.get(teacherId)?.get(slot.classGroupId);
+    if (slotArr) {
+      const i = slotArr.findIndex((s) => s.id === slot.id);
+      if (i >= 0) slotArr.splice(i, 1);
+      if (slotArr.length === 0) this.classSlots.get(teacherId)!.delete(slot.classGroupId);
+    }
     if (!slot.isTahfidz) {
       const set = this.subjClasses.get(teacherId)?.get(slot.subjectId);
       if (set) {
@@ -90,6 +107,9 @@ function canTake(state: SolverState, t: Teacher, slot: Slot, config: PlanConfig)
   if (sectionToGender(slot.section) !== t.gender) return false;
   if (!t.qualifiedKeys.includes(qualKey(slot.level, slot.subjectId))) return false;
   if (state.loadOf(t.id) + slot.sks > t.maxSks) return false;
+  // At most one subject per class, except the 4-SKS-subject + Hifzhul Qur'an pairing.
+  const held = state.slotsInClass(t.id, slot.classGroupId);
+  if (held.length > 0 && !isAllowedTeacherClassCombo([...held, slot])) return false;
   if (!slot.isTahfidz) {
     const classes = state.classesForSubject(t.id, slot.subjectId);
     const distinct = classes?.size ?? 0;

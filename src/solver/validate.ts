@@ -8,7 +8,7 @@ import type {
   ValidationIssue,
   ValidationReport,
 } from '../types/model';
-import { LEVEL_LABELS, qualKey, sectionToGender, SECTION_LABELS } from '../types/model';
+import { isAllowedTeacherClassCombo, LEVEL_LABELS, qualKey, sectionToGender, SECTION_LABELS } from '../types/model';
 import type { Level } from '../types/model';
 
 export interface TeacherLoad {
@@ -155,6 +155,33 @@ export function validatePlan(input: ValidateInput): ValidationReport {
         code: 'BELOW_TARGET',
         message: `${t.name} baru ${tl.load} SKS (target ${tl.relaxedTarget} SKS).`,
         teacherId: t.id,
+      });
+    }
+  }
+
+  // ---- per-(teacher, class) rule: at most one subject, except 4-SKS + Hifzh ----
+  const byTeacherClass = new Map<string, Map<string, Slot[]>>(); // teacherId -> classGroupId -> slots
+  for (const a of assignments) {
+    if (!a.teacherId) continue;
+    const slot = slotById.get(a.slotId);
+    if (!slot) continue;
+    let m = byTeacherClass.get(a.teacherId);
+    if (!m) byTeacherClass.set(a.teacherId, (m = new Map()));
+    const arr = m.get(slot.classGroupId);
+    if (arr) arr.push(slot);
+    else m.set(slot.classGroupId, [slot]);
+  }
+  for (const [teacherId, m] of byTeacherClass) {
+    const t = teacherById.get(teacherId);
+    for (const [classGroupId, classSlots] of m) {
+      if (isAllowedTeacherClassCombo(classSlots)) continue;
+      const subjList = classSlots.map((s) => subjName(s.subjectId)).join(', ');
+      issues.push({
+        level: 'error',
+        code: 'TEACHER_TWICE_IN_CLASS',
+        message: `${t?.name ?? teacherId} mengampu ${classSlots.length} mata kuliah di ${className(classGroupId)} (${subjList}). Maks 1 per kelas, kecuali 1 matkul 4 SKS bersama Hifzhul Qur'an.`,
+        teacherId,
+        classGroupId,
       });
     }
   }

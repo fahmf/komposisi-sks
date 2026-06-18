@@ -141,6 +141,7 @@ export type IssueCode =
   | 'SUBJECT_UNDERSTAFFED'
   | 'CAP_EXCEEDED'
   | 'OVER_MAX_CLASSES'
+  | 'TEACHER_TWICE_IN_CLASS'
   | 'GENDER_MISMATCH'
   | 'NOT_QUALIFIED'
   | 'CURRICULUM_NOT_32';
@@ -172,6 +173,21 @@ export const genderToSection = (gender: Gender): Section =>
 
 /** Centralised exemption check — tahfidz subjects skip load rules. */
 export const isExemptFromLoadRules = (isTahfidz: boolean): boolean => isTahfidz;
+
+/** SKS of the lone non-tahfidz subject that may be paired with Hifzhul Qur'an
+ *  for the same teacher in one class. */
+export const PAIRABLE_COMPANION_SKS = 4;
+
+/** A teacher may hold at most ONE subject per class, EXCEPT the allowed pairing:
+ *  exactly one Hifzhul Qur'an (tahfidz) slot together with one non-tahfidz subject
+ *  of {@link PAIRABLE_COMPANION_SKS} SKS. Returns true when the set is permitted. */
+export function isAllowedTeacherClassCombo(slots: { isTahfidz: boolean; sks: number }[]): boolean {
+  if (slots.length <= 1) return true;
+  if (slots.length !== 2) return false;
+  const tahfidz = slots.filter((s) => s.isTahfidz);
+  const others = slots.filter((s) => !s.isTahfidz);
+  return tahfidz.length === 1 && others.length === 1 && others[0].sks === PAIRABLE_COMPANION_SKS;
+}
 
 /** Qualification key: a subject scoped to a jenjang. */
 export const qualKey = (level: Level, subjectId: string): string => `${level}:${subjectId}`;

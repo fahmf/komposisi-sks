@@ -38,9 +38,10 @@ describe('appStore end-to-end actions (UI logic)', () => {
     const { useStore } = await import('./appStore');
     const st = useStore.getState();
 
-    const ILP1Keys = ILP1.map((s) => `ILP:${s}`);
-    for (const id of ['A', 'B', 'C']) st.addTeacher({ name: `Ustadz ${id}`, gender: 'L', qualifiedKeys: ILP1Keys, maxSks: 24, active: true });
-    for (const id of ['X', 'Y']) st.addTeacher({ name: `Ustadzah ${id}`, gender: 'P', qualifiedKeys: ILP1Keys, maxSks: 18, active: true });
+    // One specialist per ILP-1 subject per section, so 2 putra + 1 putri classes are
+    // fully staffable under the one-subject-per-class rule (12 teachers total).
+    ILP1.forEach((s, i) => st.addTeacher({ name: `Ustadz ${i}`, gender: 'L', qualifiedKeys: [`ILP:${s}`], maxSks: 24, active: true }));
+    ILP1.forEach((s, i) => st.addTeacher({ name: `Ustadzah ${i}`, gender: 'P', qualifiedKeys: [`ILP:${s}`], maxSks: 18, active: true }));
 
     useStore.getState().setClassCount('putra', 'ILP', 1, 2);
     useStore.getState().setClassCount('putri', 'ILP', 1, 1);
@@ -109,6 +110,6 @@ describe('appStore end-to-end actions (UI logic)', () => {
     expect(useStore.getState().teachers.length).toBe(0);
     const res = useStore.getState().importJSON(json);
     expect(res.ok).toBe(true);
-    expect(useStore.getState().teachers.length).toBe(5);
+    expect(useStore.getState().teachers.length).toBe(12);
   });
 });

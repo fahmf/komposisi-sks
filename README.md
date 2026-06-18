@@ -19,8 +19,8 @@ pindah perangkat. Tampilan responsif — nyaman dibuka di HP maupun laptop.
   - Kuota maksimal SKS tiap pengajar (mis. yang berbagi dengan divisi lain).
   - Kualifikasi: pengajar hanya diberi mata kuliah yang ia kuasai.
   - Maksimal mengajar **mata kuliah yang sama di 2 kelas** (tahfidz dikecualikan).
-  - Batas SKS pengajar dalam **satu kelas** agar tiap kelas diisi beberapa
-    pengajar (tahfidz dikecualikan).
+  - **Satu pengajar maksimal 1 mata kuliah per kelas** agar tiap kelas diisi
+    beberapa pengajar — kecuali kombinasi **1 matkul 4 SKS + Hifzhul Qur'an**.
   - Target **≥ 24 SKS** per pengajar (otomatis dilonggarkan bila kuotanya < 24).
 - **Edit manual + validasi langsung** — ubah penugasan per sel, lihat peringatan
   (error merah / peringatan kuning) dan **meter beban SKS** tiap pengajar

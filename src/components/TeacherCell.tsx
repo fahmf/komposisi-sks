@@ -16,6 +16,7 @@ export default function TeacherCell({
   subjectName,
   tone,
   dupCount = 0,
+  dupViolation = false,
   onChange,
   onToggleLock,
 }: {
@@ -28,6 +29,8 @@ export default function TeacherCell({
   tone: 'ok' | 'warn' | 'error' | 'empty';
   /** How many subjects this teacher holds in the same class (≥2 = flagged). */
   dupCount?: number;
+  /** True when the per-class combo breaks the rule (red) vs. the allowed pairing (blue). */
+  dupViolation?: boolean;
   onChange: (teacherId: string | null) => void;
   onToggleLock: () => void;
 }) {
@@ -62,8 +65,16 @@ export default function TeacherCell({
       </select>
       {teacherId && dupCount >= 2 && (
         <span
-          className="shrink-0 rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
-          title={`Pengajar ini mengampu ${dupCount} mata kuliah di kelas yang sama`}
+          className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+            dupViolation
+              ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300'
+              : 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300'
+          }`}
+          title={
+            dupViolation
+              ? `Tidak boleh: ${dupCount} mata kuliah di kelas yang sama (maks 1, kecuali 1 matkul 4 SKS + Hifzhul Qur'an)`
+              : `Diizinkan: 1 matkul 4 SKS + Hifzhul Qur'an di kelas yang sama`
+          }
         >
           {dupCount}×
         </span>

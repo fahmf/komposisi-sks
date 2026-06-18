@@ -99,6 +99,49 @@ describe('autoAssign hard constraints', () => {
     const { assignments } = autoAssign({ slots, teachers, config });
     expect(assignments.every((a) => a.teacherId === null)).toBe(true);
   });
+
+  it('caps a teacher to one subject per class when no 4-SKS pairing applies', () => {
+    const cg = classes(1, 'putra');
+    const slots = buildSlots(cg, curriculum, subjects); // qiraah 8, tauhid 2, hifzh 2 — no 4-SKS subject
+    const teachers = [teacher('m1', 'L', ['qiraah', 'tauhid', 'hifzh'], 100)];
+    const { assignments } = autoAssign({ slots, teachers, config });
+    const held = assignments.filter((a) => a.teacherId === 'm1');
+    expect(held.length).toBe(1); // only one slot; the rest stay open (no other teacher)
+  });
+
+  it("allows a 4-SKS subject paired with Hifzhul Qur'an for the same teacher in one class", () => {
+    const subj: Subject[] = [
+      { id: 'fiqh', name: 'Fiqh', isTahfidz: false },
+      { id: 'hifzh', name: 'Hifzh', isTahfidz: true },
+    ];
+    const cur = [
+      { id: 'cf', level: 'ILP' as const, semester: 1 as const, subjectId: 'fiqh', sks: 4 },
+      { id: 'ch', level: 'ILP' as const, semester: 1 as const, subjectId: 'hifzh', sks: 2 },
+    ];
+    const cg = classes(1, 'putra');
+    const slots = buildSlots(cg, cur, subj);
+    const teachers = [teacher('m1', 'L', ['fiqh', 'hifzh'], 100)];
+    const { assignments } = autoAssign({ slots, teachers, config });
+    expect(assignments.every((a) => a.teacherId === 'm1')).toBe(true); // both slots: the allowed pairing
+    const report = validatePlan({ slots, assignments, teachers, subjects: subj, classGroups: cg, config });
+    expect(report.issues.some((i) => i.code === 'TEACHER_TWICE_IN_CLASS')).toBe(false);
+  });
+
+  it('flags a disallowed second subject for a teacher in the same class', () => {
+    const cg = classes(1, 'putra');
+    const slots = buildSlots(cg, curriculum, subjects);
+    const m1 = teacher('m1', 'L', ['qiraah', 'tauhid', 'hifzh'], 100);
+    const q = slots.find((s) => s.subjectId === 'qiraah')!;
+    const tau = slots.find((s) => s.subjectId === 'tauhid')!;
+    const assignments = slots.map((s) => ({
+      slotId: s.id,
+      teacherId: s.id === q.id || s.id === tau.id ? 'm1' : null,
+      locked: true,
+      source: 'manual' as const,
+    }));
+    const report = validatePlan({ slots, assignments, teachers: [m1], subjects, classGroups: cg, config });
+    expect(report.issues.some((i) => i.code === 'TEACHER_TWICE_IN_CLASS')).toBe(true);
+  });
 });
 
 describe('autoAssign objectives & robustness', () => {

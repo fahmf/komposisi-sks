@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore, useActivePlan } from '../store/appStore';
 import type { Gender, IssueCode, Slot, Teacher } from '../types/model';
-import { LEVEL_LABELS, SECTION_LABELS } from '../types/model';
+import { isAllowedTeacherClassCombo, LEVEL_LABELS, SECTION_LABELS } from '../types/model';
 import { computeTeacherLoads, validatePlan } from '../solver/validate';
 import { eligibleTeachers, groupedClasses, subjMap } from '../lib/derived';
 import { buildTeacherSchedules } from '../lib/exporters';
@@ -55,6 +55,9 @@ export default function AssignmentBoard() {
     for (const t of teachers) teacherTone.set(t.id, 'ok');
     for (const issue of report.issues) {
       if (!issue.teacherId) continue;
+      // Per-class duplication is surfaced on the offending cell, not by tinting
+      // every cell of that teacher.
+      if (issue.code === 'TEACHER_TWICE_IN_CLASS') continue;
       const cur = teacherTone.get(issue.teacherId);
       if (issue.level === 'error') teacherTone.set(issue.teacherId, 'error');
       else if (cur !== 'error') teacherTone.set(issue.teacherId, 'warn');
@@ -62,18 +65,27 @@ export default function AssignmentBoard() {
     const slotHardError = new Set(
       report.issues.filter((i) => i.slotId && HARD_SLOT_CODES.includes(i.code)).map((i) => i.slotId!),
     );
-    // Count how many slots each teacher holds within a single class, to flag when
-    // the same teacher teaches ≥2 subjects in one class (tahfidz included).
+    // Count slots each teacher holds within a class, and flag combos that break the
+    // "one subject per class (except 4-SKS + Hifzh)" rule, to mark the offending cells.
     const classTeacherCount = new Map<string, Map<string, number>>(); // classGroupId -> teacherId -> count
+    const classTeacherSlots = new Map<string, Slot[]>(); // `${classGroupId}|${teacherId}` -> slots
     for (const slot of plan.slots) {
       const tid = assignmentBySlot.get(slot.id)?.teacherId;
       if (!tid) continue;
       let m = classTeacherCount.get(slot.classGroupId);
       if (!m) classTeacherCount.set(slot.classGroupId, (m = new Map()));
       m.set(tid, (m.get(tid) ?? 0) + 1);
+      const key = `${slot.classGroupId}|${tid}`;
+      const arr = classTeacherSlots.get(key);
+      if (arr) arr.push(slot);
+      else classTeacherSlots.set(key, [slot]);
+    }
+    const classTeacherViolation = new Set<string>();
+    for (const [key, arr] of classTeacherSlots) {
+      if (!isAllowedTeacherClassCombo(arr)) classTeacherViolation.add(key);
     }
     const assignedCount = plan.assignments.filter((a) => a.teacherId).length;
-    return { sm, report, loads, assignmentBySlot, slotByClassSubject, teacherTone, slotHardError, classTeacherCount, assignedCount };
+    return { sm, report, loads, assignmentBySlot, slotByClassSubject, teacherTone, slotHardError, classTeacherCount, classTeacherViolation, assignedCount };
   }, [plan, teachers, subjects]);
 
   const teacherSchedules = useMemo(() => {
@@ -84,7 +96,7 @@ export default function AssignmentBoard() {
   if (!plan) return <EmptyState title="Belum ada semester aktif" hint="Buat semester di menu Pengaturan." />;
   if (!derived) return null;
 
-  const { report, loads, assignmentBySlot, slotByClassSubject, teacherTone, slotHardError, classTeacherCount, assignedCount } = derived;
+  const { report, loads, assignmentBySlot, slotByClassSubject, teacherTone, slotHardError, classTeacherCount, classTeacherViolation, assignedCount } = derived;
   const groups = groupedClasses(plan);
   const totalSlots = plan.slots.length;
 
@@ -99,16 +111,17 @@ export default function AssignmentBoard() {
       })
       .sort((x, y) => x.teacher.name.localeCompare(y.teacher.name));
     const tTone = teacherId ? teacherTone.get(teacherId) : undefined;
+    const dupViolation = !!teacherId && classTeacherViolation.has(`${slot.classGroupId}|${teacherId}`);
     const tone: 'ok' | 'warn' | 'error' | 'empty' = !teacherId
       ? 'empty'
-      : slotHardError.has(slot.id) || tTone === 'error'
+      : dupViolation || slotHardError.has(slot.id) || tTone === 'error'
         ? 'error'
         : tTone === 'warn'
           ? 'warn'
           : 'ok';
     const currentName = teacherId ? teachers.find((t) => t.id === teacherId)?.name : undefined;
     const dupCount = teacherId ? (classTeacherCount.get(slot.classGroupId)?.get(teacherId) ?? 0) : 0;
-    return { teacherId, locked, eligible, tone, currentName, dupCount };
+    return { teacherId, locked, eligible, tone, currentName, dupCount, dupViolation };
   };
 
   const getSlot = (classGroupId: string, subjectId: string) => slotByClassSubject.get(`${classGroupId}|${subjectId}`);
@@ -125,6 +138,7 @@ export default function AssignmentBoard() {
         subjectName={derived.sm.get(slot.subjectId)?.name}
         tone={cell.tone}
         dupCount={cell.dupCount}
+        dupViolation={cell.dupViolation}
         onChange={(tid) => setAssignment(slot.id, tid)}
         onToggleLock={() => toggleLock(slot.id)}
       />
