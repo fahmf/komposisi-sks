@@ -125,6 +125,7 @@ export interface StoreActions {
   deleteSubject: (id: string) => void;
   // teachers
   addTeacher: (t: Omit<Teacher, 'id'>) => void;
+  addTeachers: (list: Omit<Teacher, 'id'>[]) => void;
   updateTeacher: (id: string, patch: Partial<Teacher>) => void;
   deleteTeacher: (id: string) => void;
   // master curriculum
@@ -191,6 +192,8 @@ export const useStore = create<Store>()(
 
         // ----- teachers -----
         addTeacher: (t) => set({ teachers: [...get().teachers, { ...t, id: nanoid() }] }),
+        addTeachers: (list) =>
+          set({ teachers: [...get().teachers, ...list.map((t) => ({ ...t, id: nanoid() }))] }),
         updateTeacher: (id, patch) =>
           set({ teachers: get().teachers.map((t) => (t.id === id ? { ...t, ...patch } : t)) }),
         deleteTeacher: (id) => set({ teachers: get().teachers.filter((t) => t.id !== id) }),

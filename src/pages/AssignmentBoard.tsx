@@ -7,6 +7,7 @@ import { computeTeacherLoads, validatePlan } from '../solver/validate';
 import { eligibleTeachers, groupedClasses, subjMap } from '../lib/derived';
 import { buildTeacherSchedules } from '../lib/exporters';
 import TeacherCell, { type CellTeacher } from '../components/TeacherCell';
+import MatrixPrint from '../components/MatrixPrint';
 import { PageHeader, EmptyState, StatCard } from '../components/ui';
 import { IconBolt, IconCheck, IconPrint, IconTrash, IconWarn } from '../components/icons';
 
@@ -137,6 +138,7 @@ export default function AssignmentBoard() {
 
   return (
     <>
+      <div className="no-print">
       <PageHeader
         title="Pembagian SKS"
         subtitle={plan.name}
@@ -149,6 +151,9 @@ export default function AssignmentBoard() {
               }}
             >
               <IconTrash width={16} height={16} /> Kosongkan
+            </button>
+            <button className="btn-outline" onClick={() => window.print()} disabled={totalSlots === 0} title="Untuk tabel lebar, pilih orientasi Lanskap di dialog cetak.">
+              <IconPrint width={16} height={16} /> Cetak matriks
             </button>
             <button className="btn-primary" onClick={runAutoAssign} disabled={totalSlots === 0}>
               <IconBolt width={16} height={16} /> Susun otomatis
@@ -495,6 +500,8 @@ export default function AssignmentBoard() {
           )}
         </>
       )}
+      </div>
+      <MatrixPrint plan={plan} teachers={teachers} subjects={subjects} />
     </>
   );
 }

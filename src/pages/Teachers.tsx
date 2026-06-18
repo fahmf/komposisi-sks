@@ -1,10 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useStore } from '../store/appStore';
 import type { Gender, Level, SemesterNo, Teacher } from '../types/model';
 import { LEVEL_LABELS, parseQualKey, qualKey } from '../types/model';
 import { Field, Modal, PageHeader, EmptyState } from '../components/ui';
-import { IconEdit, IconPlus, IconTrash, IconUsers } from '../components/icons';
+import { IconDownload, IconEdit, IconPlus, IconTrash, IconUsers } from '../components/icons';
 import { toNum } from '../lib/num';
+import {
+  importTeachersFromCSV,
+  importTeachersFromExcel,
+  teacherTemplateCSV,
+  type ImportResult,
+} from '../lib/importTeachers';
 
 interface Draft {
   name: string;
@@ -31,6 +37,7 @@ export default function Teachers() {
   const subjects = useStore((s) => s.subjects);
   const master = useStore((s) => s.masterCurriculum);
   const addTeacher = useStore((s) => s.addTeacher);
+  const addTeachers = useStore((s) => s.addTeachers);
   const updateTeacher = useStore((s) => s.updateTeacher);
   const deleteTeacher = useStore((s) => s.deleteTeacher);
 
@@ -38,6 +45,43 @@ export default function Teachers() {
   const [editId, setEditId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [subjectSemester, setSubjectSemester] = useState<SemesterNo>(1);
+
+  // ----- bulk import -----
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  const onPickFile = async (file: File) => {
+    setImporting(true);
+    try {
+      const isExcel = /\.xlsx?$/i.test(file.name);
+      const result = isExcel
+        ? await importTeachersFromExcel(file, subjects)
+        : importTeachersFromCSV(await file.text(), subjects);
+      setImportResult(result);
+    } catch (e) {
+      setImportResult({ rows: [], errors: [(e as Error).message || 'Gagal membaca file.'] });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const confirmImport = () => {
+    if (importResult && importResult.rows.length > 0) {
+      addTeachers(importResult.rows.map((r) => r.draft));
+    }
+    setImportResult(null);
+  };
+
+  const downloadTemplate = () => {
+    const blob = new Blob([teacherTemplateCSV(subjects)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'template-pengajar.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const sorted = useMemo(
     () => [...teachers].sort((a, b) => a.gender.localeCompare(b.gender) || a.name.localeCompare(b.name)),
@@ -102,10 +146,30 @@ export default function Teachers() {
         title="Pengajar"
         subtitle={`${teachers.length} pengajar terdaftar`}
         actions={
-          <button className="btn-primary" onClick={openAdd}>
-            <IconPlus width={16} height={16} /> Tambah pengajar
-          </button>
+          <>
+            <button className="btn-outline" onClick={downloadTemplate} title="Unduh template CSV untuk diisi">
+              <IconDownload width={16} height={16} /> Template
+            </button>
+            <button className="btn-outline" onClick={() => fileRef.current?.click()} disabled={importing}>
+              <IconDownload width={16} height={16} className="rotate-180" />
+              {importing ? 'Membaca…' : 'Impor CSV/Excel'}
+            </button>
+            <button className="btn-primary" onClick={openAdd}>
+              <IconPlus width={16} height={16} /> Tambah pengajar
+            </button>
+          </>
         }
+      />
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void onPickFile(f);
+          e.target.value = '';
+        }}
       />
 
       {sorted.length === 0 ? (
@@ -292,6 +356,51 @@ export default function Teachers() {
             </button>
           </div>
         </div>
+      </Modal>
+
+      <Modal open={importResult !== null} onClose={() => setImportResult(null)} title="Pratinjau impor pengajar" wide>
+        {importResult && (
+          <div className="space-y-4">
+            {importResult.errors.length > 0 && (
+              <div className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:bg-rose-900/20 dark:text-rose-300">
+                {importResult.errors.map((e, i) => (
+                  <p key={i}>⚠ {e}</p>
+                ))}
+              </div>
+            )}
+            {importResult.rows.length > 0 && (
+              <>
+                <p className="text-sm text-slate-500">
+                  {importResult.rows.length} pengajar terbaca. Periksa lalu konfirmasi untuk menambahkan.
+                </p>
+                <div className="max-h-80 space-y-2 overflow-y-auto rounded-xl border border-slate-200 p-2 dark:border-slate-700">
+                  {importResult.rows.map((r, i) => (
+                    <div key={i} className="rounded-lg border border-slate-100 px-3 py-2 text-sm dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className={`badge ${r.draft.gender === 'L' ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300' : 'bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300'}`}>
+                          {r.draft.gender === 'L' ? 'Putra' : 'Putri'}
+                        </span>
+                        <span className="font-semibold">{r.draft.name}</span>
+                        <span className="text-xs text-slate-400">· {r.draft.maxSks} SKS · {r.draft.qualifiedKeys.length} matkul{r.draft.active ? '' : ' · nonaktif'}</span>
+                      </div>
+                      {r.warnings.map((w, j) => (
+                        <p key={j} className="mt-1 text-xs text-amber-600 dark:text-amber-400">⚠ {w}</p>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <button className="btn-outline" onClick={() => setImportResult(null)}>
+                Batal
+              </button>
+              <button className="btn-primary" onClick={confirmImport} disabled={importResult.rows.length === 0}>
+                <IconUsers width={16} height={16} /> Tambah {importResult.rows.length} pengajar
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </>
   );
