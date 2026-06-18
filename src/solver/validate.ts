@@ -179,7 +179,7 @@ export function validatePlan(input: ValidateInput): ValidationReport {
       issues.push({
         level: 'error',
         code: 'TEACHER_TWICE_IN_CLASS',
-        message: `${t?.name ?? teacherId} mengampu ${classSlots.length} mata kuliah di ${className(classGroupId)} (${subjList}). Maks 1 per kelas, kecuali 1 matkul 4 SKS bersama Hifzhul Qur'an.`,
+        message: `${t?.name ?? teacherId} mengampu ${classSlots.length} mata kuliah di ${className(classGroupId)} (${subjList}). Maks 1 per kelas, kecuali 1 matkul (maks 4 SKS) bersama Hifzhul Qur'an.`,
         teacherId,
         classGroupId,
       });

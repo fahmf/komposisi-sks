@@ -100,13 +100,30 @@ describe('autoAssign hard constraints', () => {
     expect(assignments.every((a) => a.teacherId === null)).toBe(true);
   });
 
-  it('caps a teacher to one subject per class when no 4-SKS pairing applies', () => {
+  it('caps a teacher to one subject per class for two non-tahfidz subjects', () => {
     const cg = classes(1, 'putra');
-    const slots = buildSlots(cg, curriculum, subjects); // qiraah 8, tauhid 2, hifzh 2 — no 4-SKS subject
-    const teachers = [teacher('m1', 'L', ['qiraah', 'tauhid', 'hifzh'], 100)];
+    const cur = [
+      { id: 'cq', level: 'ILP' as const, semester: 1 as const, subjectId: 'qiraah', sks: 8 },
+      { id: 'ct', level: 'ILP' as const, semester: 1 as const, subjectId: 'tauhid', sks: 2 },
+    ];
+    const slots = buildSlots(cg, cur, subjects);
+    const teachers = [teacher('m1', 'L', ['qiraah', 'tauhid'], 100)];
     const { assignments } = autoAssign({ slots, teachers, config });
-    const held = assignments.filter((a) => a.teacherId === 'm1');
-    expect(held.length).toBe(1); // only one slot; the rest stay open (no other teacher)
+    expect(assignments.filter((a) => a.teacherId === 'm1').length).toBe(1); // two non-tahfidz can't pair
+  });
+
+  it("allows a small (≤4 SKS) subject paired with Hifzhul Qur'an (e.g. Tauhid 2 + Hifzh)", () => {
+    const cg = classes(1, 'putra');
+    const cur = [
+      { id: 'ct', level: 'ILP' as const, semester: 1 as const, subjectId: 'tauhid', sks: 2 },
+      { id: 'ch', level: 'ILP' as const, semester: 1 as const, subjectId: 'hifzh', sks: 2 },
+    ];
+    const slots = buildSlots(cg, cur, subjects);
+    const teachers = [teacher('m1', 'L', ['tauhid', 'hifzh'], 100)];
+    const { assignments } = autoAssign({ slots, teachers, config });
+    expect(assignments.every((a) => a.teacherId === 'm1')).toBe(true); // allowed pairing
+    const report = validatePlan({ slots, assignments, teachers, subjects, classGroups: cg, config });
+    expect(report.issues.some((i) => i.code === 'TEACHER_TWICE_IN_CLASS')).toBe(false);
   });
 
   it("allows a 4-SKS subject paired with Hifzhul Qur'an for the same teacher in one class", () => {
@@ -127,7 +144,22 @@ describe('autoAssign hard constraints', () => {
     expect(report.issues.some((i) => i.code === 'TEACHER_TWICE_IN_CLASS')).toBe(false);
   });
 
-  it('flags a disallowed second subject for a teacher in the same class', () => {
+  it("rejects a large (>4 SKS) subject paired with Hifzhul Qur'an", () => {
+    const cg = classes(1, 'putra');
+    const cur = [
+      { id: 'cq', level: 'ILP' as const, semester: 1 as const, subjectId: 'qiraah', sks: 8 },
+      { id: 'ch', level: 'ILP' as const, semester: 1 as const, subjectId: 'hifzh', sks: 2 },
+    ];
+    const slots = buildSlots(cg, cur, subjects);
+    const teachers = [teacher('m1', 'L', ['qiraah', 'hifzh'], 100)];
+    const { assignments } = autoAssign({ slots, teachers, config });
+    expect(assignments.filter((a) => a.teacherId === 'm1').length).toBe(1); // 8 SKS + Hifzh not allowed
+    const forced = slots.map((s) => ({ slotId: s.id, teacherId: 'm1', locked: true, source: 'manual' as const }));
+    const report = validatePlan({ slots, assignments: forced, teachers, subjects, classGroups: cg, config });
+    expect(report.issues.some((i) => i.code === 'TEACHER_TWICE_IN_CLASS')).toBe(true);
+  });
+
+  it('flags two non-tahfidz subjects for a teacher in the same class', () => {
     const cg = classes(1, 'putra');
     const slots = buildSlots(cg, curriculum, subjects);
     const m1 = teacher('m1', 'L', ['qiraah', 'tauhid', 'hifzh'], 100);

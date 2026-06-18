@@ -72,8 +72,8 @@ export default function TeacherCell({
           }`}
           title={
             dupViolation
-              ? `Tidak boleh: ${dupCount} mata kuliah di kelas yang sama (maks 1, kecuali 1 matkul 4 SKS + Hifzhul Qur'an)`
-              : `Diizinkan: 1 matkul 4 SKS + Hifzhul Qur'an di kelas yang sama`
+              ? `Tidak boleh: ${dupCount} mata kuliah di kelas yang sama (maks 1, kecuali 1 matkul maks 4 SKS + Hifzhul Qur'an)`
+              : `Diizinkan: 1 matkul (maks 4 SKS) + Hifzhul Qur'an di kelas yang sama`
           }
         >
           {dupCount}×
