@@ -2,6 +2,7 @@ import { useStore, useActivePlan } from '../store/appStore';
 import type { PlanConfig } from '../types/model';
 import { PageHeader, Field, EmptyState } from '../components/ui';
 import { IconPlus, IconTrash } from '../components/icons';
+import { toNum } from '../lib/num';
 
 export default function Settings() {
   const plans = useStore((s) => s.plans);
@@ -22,7 +23,8 @@ export default function Settings() {
         className="input"
         step={step}
         value={(plan?.config[key] as number) ?? 0}
-        onChange={(e) => updatePlanConfig({ [key]: Number(e.target.value) } as Partial<PlanConfig>)}
+        min={0}
+        onChange={(e) => updatePlanConfig({ [key]: toNum(e.target.value) } as Partial<PlanConfig>)}
       />
       {hint && <span className="mt-1 block text-[11px] text-slate-400">{hint}</span>}
     </Field>
@@ -110,15 +112,15 @@ export default function Settings() {
           <div className="grid gap-4 sm:grid-cols-3">
             <Field label="Dorong ke target">
               <input type="number" className="input" step={0.5} value={plan.config.weights.underTargetPenalty}
-                onChange={(e) => updatePlanConfig({ weights: { ...plan.config.weights, underTargetPenalty: Number(e.target.value) } })} />
+                onChange={(e) => updatePlanConfig({ weights: { ...plan.config.weights, underTargetPenalty: toNum(e.target.value) } })} />
             </Field>
             <Field label="Penalti variasi kelas">
               <input type="number" className="input" step={0.5} value={plan.config.weights.perClassVarietyPenalty}
-                onChange={(e) => updatePlanConfig({ weights: { ...plan.config.weights, perClassVarietyPenalty: Number(e.target.value) } })} />
+                onChange={(e) => updatePlanConfig({ weights: { ...plan.config.weights, perClassVarietyPenalty: toNum(e.target.value) } })} />
             </Field>
             <Field label="Pemerataan beban">
               <input type="number" className="input" step={0.1} value={plan.config.weights.loadBalancePenalty}
-                onChange={(e) => updatePlanConfig({ weights: { ...plan.config.weights, loadBalancePenalty: Number(e.target.value) } })} />
+                onChange={(e) => updatePlanConfig({ weights: { ...plan.config.weights, loadBalancePenalty: toNum(e.target.value) } })} />
             </Field>
           </div>
         </div>

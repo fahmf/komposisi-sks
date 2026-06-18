@@ -139,6 +139,15 @@ describe('autoAssign objectives & robustness', () => {
     expect(report.issues.some((i) => i.code === 'SUBJECT_UNDERSTAFFED')).toBe(true);
   });
 
+  it('warns when a term curriculum total differs from the configured target', () => {
+    const cg = classes(1, 'putra');
+    const slots = buildSlots(cg, curriculum, subjects); // ILP sem1 total = 12 != 32
+    const teachers = [teacher('m1', 'L', ['qiraah', 'tauhid', 'hifzh'], 100)];
+    const { assignments } = autoAssign({ slots, teachers, config });
+    const report = validatePlan({ slots, assignments, teachers, subjects, classGroups: cg, config });
+    expect(report.issues.some((i) => i.code === 'CURRICULUM_NOT_32')).toBe(true);
+  });
+
   it('pushes teachers toward the relaxed 24 SKS target when capacity allows', () => {
     // 4 classes * 12 sks = 48 sks across 2 teachers -> each should land near 24
     const cg = classes(4, 'putra');

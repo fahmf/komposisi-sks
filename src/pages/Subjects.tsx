@@ -4,6 +4,10 @@ import type { Level, SemesterNo } from '../types/model';
 import { LEVEL_LABELS } from '../types/model';
 import { Field, Modal, PageHeader } from '../components/ui';
 import { IconEdit, IconPlus, IconTrash } from '../components/icons';
+import { toNum } from '../lib/num';
+import { DEFAULT_PLAN_CONFIG } from '../data/seed';
+
+const TARGET_SKS = DEFAULT_PLAN_CONFIG.curriculumTargetSks;
 
 const LEVEL_SEM: { level: Level; semester: SemesterNo }[] = [
   { level: 'ILP', semester: 1 },
@@ -74,12 +78,12 @@ export default function Subjects() {
                 </h3>
                 <span
                   className={`badge ${
-                    total === 32
+                    total === TARGET_SKS
                       ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
                       : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
                   }`}
                 >
-                  {total} / 32 SKS
+                  {total} / {TARGET_SKS} SKS
                 </span>
               </div>
               <div className="space-y-1">
@@ -95,7 +99,7 @@ export default function Subjects() {
                       value={e.sks}
                       min={0}
                       step={2}
-                      onChange={(ev) => setMasterSks(level, semester, e.subjectId, Number(ev.target.value))}
+                      onChange={(ev) => setMasterSks(level, semester, e.subjectId, toNum(ev.target.value))}
                     />
                     <button
                       className="rounded-lg p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/30"

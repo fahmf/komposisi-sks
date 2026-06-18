@@ -6,6 +6,7 @@ import { recommendClassCount } from '../solver/classCount';
 import { groupedClasses } from '../lib/derived';
 import { PageHeader, EmptyState } from '../components/ui';
 import { IconCheck, IconGrid, IconPlus, IconTrash } from '../components/icons';
+import { toNum } from '../lib/num';
 
 export default function Classes() {
   const plan = useActivePlan();
@@ -76,11 +77,11 @@ export default function Classes() {
           </label>
           <label className="block">
             <span className="label">Jumlah mahasiswa terdaftar</span>
-            <input type="number" className="input" value={enrolled} min={0} onChange={(e) => setEnrolled(Number(e.target.value))} />
+            <input type="number" className="input" value={enrolled} min={0} onChange={(e) => setEnrolled(toNum(e.target.value))} />
           </label>
           <label className="block">
             <span className="label">Perkiraan mundur (%)</span>
-            <input type="number" className="input" value={attrition} min={0} max={100} onChange={(e) => setAttrition(Number(e.target.value))} />
+            <input type="number" className="input" value={attrition} min={0} max={100} onChange={(e) => setAttrition(toNum(e.target.value, 0, 100))} />
           </label>
           <div className="flex items-end">
             <div className="w-full rounded-xl bg-brand-50 px-4 py-2.5 text-center dark:bg-brand-900/30">

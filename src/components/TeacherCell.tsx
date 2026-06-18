@@ -13,6 +13,7 @@ export default function TeacherCell({
   locked,
   eligible,
   currentName,
+  subjectName,
   tone,
   onChange,
   onToggleLock,
@@ -22,6 +23,7 @@ export default function TeacherCell({
   locked: boolean;
   eligible: CellTeacher[];
   currentName?: string;
+  subjectName?: string;
   tone: 'ok' | 'warn' | 'error' | 'empty';
   onChange: (teacherId: string | null) => void;
   onToggleLock: () => void;
@@ -44,7 +46,7 @@ export default function TeacherCell({
         className="min-w-0 flex-1 bg-transparent py-1 text-sm focus:outline-none"
         value={teacherId ?? ''}
         onChange={(e) => onChange(e.target.value || null)}
-        aria-label={`Pengajar untuk ${slot.subjectId}`}
+        aria-label={`Pengajar untuk ${subjectName ?? slot.subjectId}`}
       >
         <option value="">— pilih —</option>
         {!hasCurrent && teacherId && <option value={teacherId}>{currentName ?? '(tidak memenuhi syarat)'}</option>}

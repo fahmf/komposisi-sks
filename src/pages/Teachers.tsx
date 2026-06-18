@@ -4,6 +4,7 @@ import type { Gender, Level, SemesterNo, Teacher } from '../types/model';
 import { LEVEL_LABELS, parseQualKey, qualKey } from '../types/model';
 import { Field, Modal, PageHeader, EmptyState } from '../components/ui';
 import { IconEdit, IconPlus, IconTrash, IconUsers } from '../components/icons';
+import { toNum } from '../lib/num';
 
 interface Draft {
   name: string;
@@ -203,7 +204,7 @@ export default function Teachers() {
                 className="input"
                 value={draft.maxSks}
                 min={0}
-                onChange={(e) => setDraft({ ...draft, maxSks: Number(e.target.value) })}
+                onChange={(e) => setDraft({ ...draft, maxSks: toNum(e.target.value) })}
               />
             </Field>
           </div>

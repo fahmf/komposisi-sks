@@ -252,6 +252,8 @@ export const useStore = create<Store>()(
         // ----- classes -----
         setClassCount: (section, level, sem, count, studentCount) =>
           mutateActivePlan((p) => {
+            // Clamp to a sane bound — a non-finite count would loop forever below.
+            count = Number.isFinite(count) ? Math.max(0, Math.min(Math.floor(count), 200)) : 0;
             const others = p.classGroups.filter(
               (c) => groupKey(c.section, c.level, c.semester) !== groupKey(section, level, sem),
             );
@@ -370,7 +372,12 @@ export const useStore = create<Store>()(
                 error: `Versi data ${data.schemaVersion} tidak cocok dengan aplikasi (v${SCHEMA_VERSION}).`,
               };
             }
-            set({ ...data });
+            // Repair a dangling active-plan pointer so the UI doesn't show "no active
+            // semester" while plans actually exist.
+            const activePlanId = data.plans.some((p) => p.id === data.activePlanId)
+              ? data.activePlanId
+              : (data.plans[0]?.id ?? null);
+            set({ ...data, activePlanId });
             return { ok: true };
           } catch (e) {
             return { ok: false, error: (e as Error).message };

@@ -192,6 +192,31 @@ export function validatePlan(input: ValidateInput): ValidationReport {
     }
   }
 
+  // ---- curriculum total per (jenjang, semester) vs configured target ----
+  // Derived from in-use slots so unused terms don't produce noise. All classes in a
+  // term share one curriculum, so one sks per (subject) is enough to total the term.
+  const curriculumBy = new Map<string, Map<string, number>>(); // `${level}|${sem}` -> subjectId -> sks
+  for (const s of slots) {
+    const cg = classById.get(s.classGroupId);
+    if (!cg) continue;
+    const key = `${cg.level}|${cg.semester}`;
+    let m = curriculumBy.get(key);
+    if (!m) curriculumBy.set(key, (m = new Map()));
+    m.set(s.subjectId, s.sks);
+  }
+  for (const [key, perTerm] of curriculumBy) {
+    const total = [...perTerm.values()].reduce((a, b) => a + b, 0);
+    if (total !== config.curriculumTargetSks) {
+      const [level, sem] = key.split('|') as [Level, string];
+      issues.push({
+        level: 'warning',
+        code: 'CURRICULUM_NOT_32',
+        message: `Kurikulum ${LEVEL_LABELS[level]} Semester ${sem} berjumlah ${total} SKS (target ${config.curriculumTargetSks}).`,
+        suggestion: 'Sesuaikan bobot SKS di menu Kurikulum atau ubah target di Pengaturan.',
+      });
+    }
+  }
+
   const errorCount = issues.filter((i) => i.level === 'error').length;
   const warningCount = issues.filter((i) => i.level === 'warning').length;
   return { issues, errorCount, warningCount };

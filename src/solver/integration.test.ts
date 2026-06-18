@@ -78,4 +78,8 @@ describe('end-to-end distribution with seed curriculum', () => {
   it('distributes load broadly (no idle active teacher when work remains)', () => {
     for (const tt of teachers) expect(loads.get(tt.id)!.load).toBeGreaterThan(0);
   });
+
+  it('does not warn about curriculum total when the term hits the 32 SKS target', () => {
+    expect(report.issues.some((i) => i.code === 'CURRICULUM_NOT_32')).toBe(false);
+  });
 });

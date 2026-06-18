@@ -40,4 +40,12 @@ describe('recommendClassCount', () => {
     const r = recommendClassCount({ enrolledNow: 0, attritionPct: 10, ...base });
     expect(r.recommended).toBe(0);
   });
+
+  it('never returns a non-finite class count for degenerate (0) bounds', () => {
+    // Used to cascade into Infinity classes and freeze the tab when materialised.
+    const r = recommendClassCount({ enrolledNow: 80, attritionPct: 0, minPerClass: 0, maxPerClass: 0 });
+    expect(Number.isFinite(r.recommended)).toBe(true);
+    expect(r.recommended).toBeGreaterThanOrEqual(1);
+    for (const sc of r.scenarios) expect(Number.isFinite(sc.classes)).toBe(true);
+  });
 });

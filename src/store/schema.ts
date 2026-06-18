@@ -19,7 +19,7 @@ export const curriculumEntrySchema = z.object({
   level: levelSchema,
   semester: semesterSchema,
   subjectId: z.string(),
-  sks: z.number(),
+  sks: z.number().finite(),
 });
 
 export const teacherSchema = z.object({
@@ -27,7 +27,7 @@ export const teacherSchema = z.object({
   name: z.string(),
   gender: genderSchema,
   qualifiedKeys: z.array(z.string()),
-  maxSks: z.number(),
+  maxSks: z.number().finite(),
   active: z.boolean(),
   note: z.string().optional(),
 });
@@ -38,15 +38,15 @@ export const classGroupSchema = z.object({
   level: levelSchema,
   semester: semesterSchema,
   label: z.string(),
-  studentCount: z.number().optional(),
-  order: z.number(),
+  studentCount: z.number().finite().optional(),
+  order: z.number().finite(),
 });
 
 export const slotSchema = z.object({
   id: z.string(),
   classGroupId: z.string(),
   subjectId: z.string(),
-  sks: z.number(),
+  sks: z.number().finite(),
   isTahfidz: z.boolean(),
   section: sectionSchema,
   level: levelSchema,
@@ -60,17 +60,17 @@ export const assignmentSchema = z.object({
 });
 
 export const planConfigSchema = z.object({
-  meetingSks: z.number(),
-  curriculumTargetSks: z.number(),
-  maxClassesPerSubjectPerTeacher: z.number(),
-  maxSksPerTeacherPerClass: z.number(),
-  targetMinSksPerTeacher: z.number(),
-  classMinStudents: z.number(),
-  classMaxStudents: z.number(),
+  meetingSks: z.number().finite(),
+  curriculumTargetSks: z.number().finite(),
+  maxClassesPerSubjectPerTeacher: z.number().finite(),
+  maxSksPerTeacherPerClass: z.number().finite(),
+  targetMinSksPerTeacher: z.number().finite(),
+  classMinStudents: z.number().finite(),
+  classMaxStudents: z.number().finite(),
   weights: z.object({
-    underTargetPenalty: z.number(),
-    perClassVarietyPenalty: z.number(),
-    loadBalancePenalty: z.number(),
+    underTargetPenalty: z.number().finite(),
+    perClassVarietyPenalty: z.number().finite(),
+    loadBalancePenalty: z.number().finite(),
   }),
 });
 
@@ -87,7 +87,7 @@ export const semesterPlanSchema = z.object({
 });
 
 export const appStateSchema = z.object({
-  schemaVersion: z.number(),
+  schemaVersion: z.number().finite(),
   subjects: z.array(subjectSchema),
   masterCurriculum: z.array(curriculumEntrySchema),
   teachers: z.array(teacherSchema),

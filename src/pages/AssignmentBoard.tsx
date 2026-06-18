@@ -110,6 +110,7 @@ export default function AssignmentBoard() {
         locked={cell.locked}
         eligible={cell.eligible}
         currentName={cell.currentName}
+        subjectName={derived.sm.get(slot.subjectId)?.name}
         tone={cell.tone}
         onChange={(tid) => setAssignment(slot.id, tid)}
         onToggleLock={() => toggleLock(slot.id)}

@@ -36,8 +36,16 @@ function badgeFor(avg: number, min: number, max: number): ScenarioBadge {
 }
 
 export function recommendClassCount(input: ClassCountInput): ClassCountResult {
-  const { enrolledNow, attritionPct, minPerClass, maxPerClass } = input;
-  const target = input.targetPerClass ?? Math.round((minPerClass + maxPerClass) / 2);
+  // Sanitise bounds first: a 0/empty/Infinity per-class limit used to cascade into
+  // an Infinity class count downstream and freeze the tab when materialised.
+  const enrolledNow = Number.isFinite(input.enrolledNow) ? Math.max(0, input.enrolledNow) : 0;
+  const attritionPct = Number.isFinite(input.attritionPct) ? clamp(input.attritionPct, 0, 100) : 0;
+  const minPerClass = Number.isFinite(input.minPerClass) && input.minPerClass > 0 ? input.minPerClass : 1;
+  const maxPerClass =
+    Number.isFinite(input.maxPerClass) && input.maxPerClass >= minPerClass
+      ? input.maxPerClass
+      : Math.max(minPerClass, 1);
+  const target = clamp(input.targetPerClass ?? Math.round((minPerClass + maxPerClass) / 2), minPerClass, maxPerClass);
   const warnings: string[] = [];
 
   const projected = Math.max(0, Math.round(enrolledNow * (1 - attritionPct / 100)));
