@@ -7,7 +7,7 @@ import type {
   Subject,
   Teacher,
 } from '../types/model';
-import { sectionToGender } from '../types/model';
+import { qualKey, sectionToGender } from '../types/model';
 
 export const subjMap = (subjects: Subject[]) => new Map(subjects.map((s) => [s.id, s]));
 export const teacherMap = (teachers: Teacher[]) => new Map(teachers.map((t) => [t.id, t]));
@@ -47,12 +47,11 @@ export function subjectsForClass(plan: SemesterPlan, cg: ClassGroup) {
     .sort((a, b) => b.sks - a.sks);
 }
 
-/** Teachers eligible for a slot by the two static filters (gender + qualification). */
+/** Teachers eligible for a slot by the two static filters (gender + jenjang-scoped qualification). */
 export function eligibleTeachers(slot: Slot, teachers: Teacher[]): Teacher[] {
   const gender = sectionToGender(slot.section);
-  return teachers.filter(
-    (t) => t.active && t.gender === gender && t.qualifiedSubjectIds.includes(slot.subjectId),
-  );
+  const key = qualKey(slot.level, slot.subjectId);
+  return teachers.filter((t) => t.active && t.gender === gender && t.qualifiedKeys.includes(key));
 }
 
 /** Curriculum total SKS per (level, semester) for the grid =32 check. */

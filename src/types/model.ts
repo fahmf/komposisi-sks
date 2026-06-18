@@ -35,7 +35,10 @@ export interface Teacher {
   name: string;
   /** 'L' teaches putra only; 'P' teaches putri only. */
   gender: Gender;
-  qualifiedSubjectIds: string[];
+  /** Qualifications scoped per jenjang: keys of the form `${Level}:${subjectId}`
+   *  (e.g. "ILP:subj-qiraah"). A teacher qualified for a subject in Pemula is NOT
+   *  automatically qualified for it in Lanjutan. Use `qualKey`/`parseQualKey`. */
+  qualifiedKeys: string[];
   /** Hard cap on SKS this teacher may take in THIS program (captures
    *  capacity shared with other divisions). */
   maxSks: number;
@@ -66,6 +69,8 @@ export interface Slot {
   sks: number;
   isTahfidz: boolean;
   section: Section;
+  /** Denormalised from the class — qualification is checked per jenjang. */
+  level: Level;
 }
 
 export interface Assignment {
@@ -167,6 +172,14 @@ export const genderToSection = (gender: Gender): Section =>
 
 /** Centralised exemption check — tahfidz subjects skip load rules. */
 export const isExemptFromLoadRules = (isTahfidz: boolean): boolean => isTahfidz;
+
+/** Qualification key: a subject scoped to a jenjang. */
+export const qualKey = (level: Level, subjectId: string): string => `${level}:${subjectId}`;
+
+export const parseQualKey = (key: string): { level: Level; subjectId: string } => {
+  const i = key.indexOf(':');
+  return { level: key.slice(0, i) as Level, subjectId: key.slice(i + 1) };
+};
 
 export const LEVEL_LABELS: Record<Level, string> = {
   ILP: 'Pemula (ILP)',

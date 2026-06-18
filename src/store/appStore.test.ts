@@ -38,8 +38,9 @@ describe('appStore end-to-end actions (UI logic)', () => {
     const { useStore } = await import('./appStore');
     const st = useStore.getState();
 
-    for (const id of ['A', 'B', 'C']) st.addTeacher({ name: `Ustadz ${id}`, gender: 'L', qualifiedSubjectIds: ILP1, maxSks: 24, active: true });
-    for (const id of ['X', 'Y']) st.addTeacher({ name: `Ustadzah ${id}`, gender: 'P', qualifiedSubjectIds: ILP1, maxSks: 18, active: true });
+    const ILP1Keys = ILP1.map((s) => `ILP:${s}`);
+    for (const id of ['A', 'B', 'C']) st.addTeacher({ name: `Ustadz ${id}`, gender: 'L', qualifiedKeys: ILP1Keys, maxSks: 24, active: true });
+    for (const id of ['X', 'Y']) st.addTeacher({ name: `Ustadzah ${id}`, gender: 'P', qualifiedKeys: ILP1Keys, maxSks: 18, active: true });
 
     useStore.getState().setClassCount('putra', 'ILP', 1, 2);
     useStore.getState().setClassCount('putri', 'ILP', 1, 1);
@@ -65,6 +66,40 @@ describe('appStore end-to-end actions (UI logic)', () => {
     const a = after.assignments.find((x) => x.slotId === slot.id)!;
     expect(a.teacherId).toBe(someTeacher.id);
     expect(a.locked).toBe(true);
+  });
+
+  it('migrates v1 data to v2 (expands qualifications per jenjang, adds slot level)', async () => {
+    const { migrateAppState } = await import('./appStore');
+    const v1 = {
+      schemaVersion: 1,
+      subjects: [{ id: 'qiraah', name: 'Qiraah', isTahfidz: false }],
+      masterCurriculum: [
+        { id: 'c1', level: 'ILP', semester: 1, subjectId: 'qiraah', sks: 8 },
+        { id: 'c2', level: 'ILL', semester: 1, subjectId: 'qiraah', sks: 6 },
+      ],
+      teachers: [{ id: 't1', name: 'T', gender: 'L', qualifiedSubjectIds: ['qiraah'], maxSks: 24, active: true }],
+      plans: [
+        {
+          id: 'p1',
+          name: 'x',
+          createdAt: '',
+          updatedAt: '',
+          classGroups: [{ id: 'g1', section: 'putra', level: 'ILP', semester: 1, label: 'A', order: 0 }],
+          curriculum: [{ id: 'c1', level: 'ILP', semester: 1, subjectId: 'qiraah', sks: 8 }],
+          slots: [{ id: 'g1__qiraah', classGroupId: 'g1', subjectId: 'qiraah', sks: 8, isTahfidz: false, section: 'putra' }],
+          assignments: [{ slotId: 'g1__qiraah', teacherId: 't1', locked: true, source: 'manual' }],
+          config: {},
+        },
+      ],
+      activePlanId: 'p1',
+      ui: { theme: 'light' },
+    };
+    const m = migrateAppState(v1);
+    expect(m.schemaVersion).toBe(2);
+    expect([...m.teachers[0].qualifiedKeys].sort()).toEqual(['ILL:qiraah', 'ILP:qiraah']);
+    expect(m.teachers[0].qualifiedSubjectIds).toBeUndefined();
+    expect(m.plans[0].slots[0].level).toBe('ILP');
+    expect(m.plans[0].assignments[0].teacherId).toBe('t1'); // preserved by slotId
   });
 
   it('round-trips through JSON export/import', async () => {

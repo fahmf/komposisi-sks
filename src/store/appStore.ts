@@ -13,7 +13,7 @@ import type {
   Subject,
   Teacher,
 } from '../types/model';
-import { SECTION_LABELS } from '../types/model';
+import { parseQualKey, SECTION_LABELS } from '../types/model';
 import { DEFAULT_PLAN_CONFIG, SEED_CURRICULUM, SEED_SUBJECTS } from '../data/seed';
 import { buildSlots } from '../solver/slots';
 import { autoAssign } from '../solver/assign';
@@ -64,6 +64,44 @@ function reconcile(plan: SemesterPlan, subjects: Subject[]): SemesterPlan {
   );
   return { ...plan, slots, assignments, updatedAt: now() };
 }
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/** Migrate older persisted/imported state to the current schema (v1 → v2). */
+export function migrateAppState(state: any): any {
+  if (!state || typeof state !== 'object') return state;
+  const version = typeof state.schemaVersion === 'number' ? state.schemaVersion : 1;
+  if (version < 2) {
+    const master: CurriculumEntry[] = state.masterCurriculum ?? [];
+    const levelsForSubject = (subjId: string): Level[] => {
+      const set = new Set<Level>();
+      for (const e of master) if (e.subjectId === subjId) set.add(e.level);
+      return [...set];
+    };
+    // qualifiedSubjectIds (global) -> qualifiedKeys scoped to every level the subject exists in
+    state.teachers = (state.teachers ?? []).map((t: any) => {
+      const keys: string[] = Array.isArray(t.qualifiedKeys)
+        ? t.qualifiedKeys
+        : (t.qualifiedSubjectIds ?? []).flatMap((id: string) =>
+            levelsForSubject(id).map((lv) => `${lv}:${id}`),
+          );
+      delete t.qualifiedSubjectIds;
+      t.qualifiedKeys = keys;
+      return t;
+    });
+    // rebuild slots so each carries its jenjang (level); preserve assignments by slotId
+    state.plans = (state.plans ?? []).map((p: any) => {
+      const slots = buildSlots(p.classGroups ?? [], p.curriculum ?? [], state.subjects ?? []);
+      const prev = new Map<string, any>((p.assignments ?? []).map((a: any) => [a.slotId, a]));
+      const assignments = slots.map(
+        (s) => prev.get(s.id) ?? { slotId: s.id, teacherId: null, locked: false, source: 'auto' },
+      );
+      return { ...p, slots, assignments };
+    });
+    state.schemaVersion = SCHEMA_VERSION;
+  }
+  return state;
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 function createInitialState(): AppState {
   const plan = makePlan('Semester Baru', SEED_CURRICULUM, DEFAULT_PLAN_CONFIG);
@@ -147,7 +185,7 @@ export const useStore = create<Store>()(
             masterCurriculum: get().masterCurriculum.filter((c) => c.subjectId !== id),
             teachers: get().teachers.map((t) => ({
               ...t,
-              qualifiedSubjectIds: t.qualifiedSubjectIds.filter((q) => q !== id),
+              qualifiedKeys: t.qualifiedKeys.filter((k) => parseQualKey(k).subjectId !== id),
             })),
           }),
 
@@ -320,7 +358,7 @@ export const useStore = create<Store>()(
         },
         importJSON: (raw) => {
           try {
-            const parsed = JSON.parse(raw);
+            const parsed = migrateAppState(JSON.parse(raw));
             const result = appStateSchema.safeParse(parsed);
             if (!result.success) {
               return { ok: false, error: result.error.issues[0]?.message ?? 'Format tidak valid.' };
@@ -347,6 +385,7 @@ export const useStore = create<Store>()(
     {
       name: 'komposisi-sks',
       version: SCHEMA_VERSION,
+      migrate: (persisted) => migrateAppState(persisted) as Store,
     },
   ),
 );

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useStore } from '../store/appStore';
-import type { Gender, Teacher } from '../types/model';
+import type { Gender, Level, Teacher } from '../types/model';
+import { LEVEL_LABELS, parseQualKey, qualKey } from '../types/model';
 import { Field, Modal, PageHeader, EmptyState } from '../components/ui';
 import { IconEdit, IconPlus, IconTrash, IconUsers } from '../components/icons';
 
@@ -8,7 +9,7 @@ interface Draft {
   name: string;
   gender: Gender;
   maxSks: number;
-  qualifiedSubjectIds: string[];
+  qualifiedKeys: string[];
   active: boolean;
   note: string;
 }
@@ -17,14 +18,17 @@ const emptyDraft: Draft = {
   name: '',
   gender: 'L',
   maxSks: 32,
-  qualifiedSubjectIds: [],
+  qualifiedKeys: [],
   active: true,
   note: '',
 };
 
+const LEVELS: Level[] = ['ILP', 'ILL'];
+
 export default function Teachers() {
   const teachers = useStore((s) => s.teachers);
   const subjects = useStore((s) => s.subjects);
+  const master = useStore((s) => s.masterCurriculum);
   const addTeacher = useStore((s) => s.addTeacher);
   const updateTeacher = useStore((s) => s.updateTeacher);
   const deleteTeacher = useStore((s) => s.deleteTeacher);
@@ -38,6 +42,26 @@ export default function Teachers() {
     [teachers],
   );
 
+  // Subjects per jenjang (from master curriculum), each with its per-semester SKS.
+  const subjectsByLevel = (level: Level) => {
+    const m = new Map<string, { id: string; name: string; isTahfidz: boolean; sems: { semester: number; sks: number }[] }>();
+    for (const e of master) {
+      if (e.level !== level) continue;
+      const subject = subjects.find((s) => s.id === e.subjectId);
+      if (!subject) continue;
+      let rec = m.get(e.subjectId);
+      if (!rec) m.set(e.subjectId, (rec = { id: subject.id, name: subject.name, isTahfidz: subject.isTahfidz, sems: [] }));
+      rec.sems.push({ semester: e.semester, sks: e.sks });
+    }
+    return [...m.values()]
+      .map((r) => ({ ...r, sems: r.sems.sort((a, b) => a.semester - b.semester) }))
+      .sort(
+        (a, b) =>
+          Math.max(...b.sems.map((s) => s.sks)) - Math.max(...a.sems.map((s) => s.sks)) ||
+          a.name.localeCompare(b.name),
+      );
+  };
+
   const openAdd = () => {
     setEditId(null);
     setDraft(emptyDraft);
@@ -49,7 +73,7 @@ export default function Teachers() {
       name: t.name,
       gender: t.gender,
       maxSks: t.maxSks,
-      qualifiedSubjectIds: [...t.qualifiedSubjectIds],
+      qualifiedKeys: [...t.qualifiedKeys],
       active: t.active,
       note: t.note ?? '',
     });
@@ -62,12 +86,12 @@ export default function Teachers() {
     else addTeacher(payload);
     setOpen(false);
   };
-  const toggleSubject = (id: string) =>
+  const toggleKey = (key: string) =>
     setDraft((d) => ({
       ...d,
-      qualifiedSubjectIds: d.qualifiedSubjectIds.includes(id)
-        ? d.qualifiedSubjectIds.filter((x) => x !== id)
-        : [...d.qualifiedSubjectIds, id],
+      qualifiedKeys: d.qualifiedKeys.includes(key)
+        ? d.qualifiedKeys.filter((x) => x !== key)
+        : [...d.qualifiedKeys, key],
     }));
 
   return (
@@ -85,7 +109,7 @@ export default function Teachers() {
       {sorted.length === 0 ? (
         <EmptyState
           title="Belum ada pengajar"
-          hint="Tambahkan pengajar beserta jenis kelamin, mata kuliah yang bisa diajar, dan kuota SKS-nya."
+          hint="Tambahkan pengajar beserta jenis kelamin, mata kuliah yang bisa diajar (per jenjang), dan kuota SKS-nya."
           action={
             <button className="btn-primary" onClick={openAdd}>
               <IconPlus width={16} height={16} /> Tambah pengajar
@@ -95,9 +119,14 @@ export default function Teachers() {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {sorted.map((t) => {
-            const subs = t.qualifiedSubjectIds
-              .map((id) => subjects.find((s) => s.id === id)?.name)
-              .filter(Boolean);
+            const subs = t.qualifiedKeys
+              .map((k) => {
+                const { level, subjectId } = parseQualKey(k);
+                const name = subjects.find((s) => s.id === subjectId)?.name;
+                return name ? { name, level } : null;
+              })
+              .filter((x): x is { name: string; level: Level } => x !== null)
+              .sort((a, b) => a.level.localeCompare(b.level) || a.name.localeCompare(b.name));
             return (
               <div key={t.id} className="card p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -130,9 +159,13 @@ export default function Teachers() {
                   {subs.length === 0 ? (
                     <span className="text-xs text-amber-600">Belum ada mata kuliah</span>
                   ) : (
-                    subs.map((name) => (
-                      <span key={name} className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {name}
+                    subs.map((s, i) => (
+                      <span
+                        key={i}
+                        className={`badge ${s.level === 'ILP' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300'}`}
+                        title={LEVEL_LABELS[s.level]}
+                      >
+                        {s.name} · {s.level}
                       </span>
                     ))
                   )}
@@ -173,22 +206,60 @@ export default function Teachers() {
               />
             </Field>
           </div>
-          <Field label="Mata kuliah yang bisa diajar">
-            <div className="max-h-52 space-y-1 overflow-y-auto rounded-xl border border-slate-200 p-2 dark:border-slate-700">
-              {subjects.map((s) => (
-                <label key={s.id} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded accent-brand-600"
-                    checked={draft.qualifiedSubjectIds.includes(s.id)}
-                    onChange={() => toggleSubject(s.id)}
-                  />
-                  <span className="text-sm">{s.name}</span>
-                  {s.isTahfidz && <span className="badge bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">Tahfidz</span>}
-                </label>
-              ))}
+
+          <div>
+            <span className="label">Mata kuliah yang bisa diajar (dipisah per jenjang)</span>
+            <p className="mb-2 text-[11px] text-slate-400">
+              Kualifikasi Pemula & Lanjutan terpisah. Angka di kanan = SKS per semester (S1 / S2).
+            </p>
+            <div className="max-h-72 space-y-3 overflow-y-auto rounded-xl border border-slate-200 p-2 dark:border-slate-700">
+              {LEVELS.map((level) => {
+                const list = subjectsByLevel(level);
+                if (list.length === 0) return null;
+                return (
+                  <div key={level}>
+                    <p
+                      className={`mb-1 rounded-md px-2 py-1 text-xs font-bold uppercase tracking-wide ${
+                        level === 'ILP'
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                          : 'bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300'
+                      }`}
+                    >
+                      {LEVEL_LABELS[level]}
+                    </p>
+                    <div className="space-y-1">
+                      {list.map((s) => {
+                        const key = qualKey(level, s.id);
+                        return (
+                          <label key={key} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded accent-brand-600"
+                              checked={draft.qualifiedKeys.includes(key)}
+                              onChange={() => toggleKey(key)}
+                            />
+                            <span className="flex-1 text-sm">
+                              {s.name}
+                              {s.isTahfidz && <span className="ml-1 badge bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">Tahfidz</span>}
+                            </span>
+                            <span className="flex shrink-0 gap-1">
+                              {s.sems.map((sem) => (
+                                <span key={sem.semester} className="badge bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                  S{sem.semester}·{sem.sks}
+                                </span>
+                              ))}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+              {master.length === 0 && <p className="px-2 py-2 text-xs text-slate-400">Belum ada kurikulum. Isi dulu di menu Kurikulum.</p>}
             </div>
-          </Field>
+          </div>
+
           <label className="flex items-center gap-2">
             <input type="checkbox" className="h-4 w-4 rounded accent-brand-600" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} />
             <span className="text-sm">Aktif semester ini</span>

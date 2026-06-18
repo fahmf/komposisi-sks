@@ -25,7 +25,7 @@ const t = (id: string, gender: 'L' | 'P', maxSks: number): Teacher => ({
   id,
   name: id,
   gender,
-  qualifiedSubjectIds: ILP1,
+  qualifiedKeys: ILP1.map((s) => `ILP:${s}`),
   maxSks,
   active: true,
 });

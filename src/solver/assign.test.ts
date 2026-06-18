@@ -30,11 +30,12 @@ function classes(n: number, section: 'putra' | 'putri' = 'putra'): ClassGroup[] 
   }));
 }
 
+// All test classes are level ILP, so qualifications are scoped to ILP.
 const teacher = (id: string, gender: 'L' | 'P', subs: string[], maxSks: number): Teacher => ({
   id,
   name: id,
   gender,
-  qualifiedSubjectIds: subs,
+  qualifiedKeys: subs.map((s) => `ILP:${s}`),
   maxSks,
   active: true,
 });
@@ -88,6 +89,15 @@ describe('autoAssign hard constraints', () => {
     const { assignments } = autoAssign({ slots, teachers, config });
     const hifzhAssigned = assignments.filter((a) => a.slotId.includes('hifzh') && a.teacherId === 'm1');
     expect(hifzhAssigned.length).toBe(4); // all 4 hifzh classes to one teacher is allowed
+  });
+
+  it('scopes qualification per jenjang (ILP qualification does not cover ILL)', () => {
+    const cgIll: ClassGroup = { id: 'l1', section: 'putra', level: 'ILL', semester: 1, label: 'ILL A', order: 0 };
+    const illCurriculum = [{ id: 'lc', level: 'ILL' as const, semester: 1 as const, subjectId: 'qiraah', sks: 6 }];
+    const slots = buildSlots([cgIll], illCurriculum, subjects);
+    const teachers = [teacher('m1', 'L', ['qiraah'], 32)]; // only ILP:qiraah
+    const { assignments } = autoAssign({ slots, teachers, config });
+    expect(assignments.every((a) => a.teacherId === null)).toBe(true);
   });
 });
 

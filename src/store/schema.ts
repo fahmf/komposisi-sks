@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 const sectionSchema = z.enum(['putra', 'putri']);
 const levelSchema = z.enum(['ILP', 'ILL']);
@@ -26,7 +26,7 @@ export const teacherSchema = z.object({
   id: z.string(),
   name: z.string(),
   gender: genderSchema,
-  qualifiedSubjectIds: z.array(z.string()),
+  qualifiedKeys: z.array(z.string()),
   maxSks: z.number(),
   active: z.boolean(),
   note: z.string().optional(),
@@ -49,6 +49,7 @@ export const slotSchema = z.object({
   sks: z.number(),
   isTahfidz: z.boolean(),
   section: sectionSchema,
+  level: levelSchema,
 });
 
 export const assignmentSchema = z.object({

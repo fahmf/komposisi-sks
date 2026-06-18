@@ -1,5 +1,5 @@
 import type { Assignment, PlanConfig, Slot, Teacher } from '../types/model';
-import { sectionToGender } from '../types/model';
+import { qualKey, sectionToGender } from '../types/model';
 
 // ---------------------------------------------------------------------------
 // Deterministic greedy construction + bounded local-search repair.
@@ -88,7 +88,7 @@ class SolverState {
 
 function canTake(state: SolverState, t: Teacher, slot: Slot, config: PlanConfig): boolean {
   if (sectionToGender(slot.section) !== t.gender) return false;
-  if (!t.qualifiedSubjectIds.includes(slot.subjectId)) return false;
+  if (!t.qualifiedKeys.includes(qualKey(slot.level, slot.subjectId))) return false;
   if (state.loadOf(t.id) + slot.sks > t.maxSks) return false;
   if (!slot.isTahfidz) {
     const classes = state.classesForSubject(t.id, slot.subjectId);
@@ -142,7 +142,9 @@ function objective(state: SolverState, teachers: Teacher[], config: PlanConfig):
 function sortSlots(slots: Slot[], teachers: Teacher[]): Slot[] {
   const feasibleCount = (slot: Slot) =>
     teachers.filter(
-      (t) => sectionToGender(slot.section) === t.gender && t.qualifiedSubjectIds.includes(slot.subjectId),
+      (t) =>
+        sectionToGender(slot.section) === t.gender &&
+        t.qualifiedKeys.includes(qualKey(slot.level, slot.subjectId)),
     ).length;
   return [...slots].sort((a, b) => {
     const fa = feasibleCount(a);

@@ -21,6 +21,7 @@ export function buildSlots(
         sks: e.sks,
         isTahfidz: subj?.isTahfidz ?? false,
         section: cg.section,
+        level: cg.level,
       });
     }
   }

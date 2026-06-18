@@ -8,7 +8,8 @@ import type {
   ValidationIssue,
   ValidationReport,
 } from '../types/model';
-import { sectionToGender, SECTION_LABELS } from '../types/model';
+import { LEVEL_LABELS, qualKey, sectionToGender, SECTION_LABELS } from '../types/model';
+import type { Level } from '../types/model';
 
 export interface TeacherLoad {
   teacherId: string;
@@ -103,11 +104,11 @@ export function validatePlan(input: ValidateInput): ValidationReport {
         teacherId: t.id,
       });
     }
-    if (!t.qualifiedSubjectIds.includes(slot.subjectId)) {
+    if (!t.qualifiedKeys.includes(qualKey(slot.level, slot.subjectId))) {
       issues.push({
         level: 'error',
         code: 'NOT_QUALIFIED',
-        message: `${t.name} tidak terdaftar mengajar ${subjName(slot.subjectId)} (${className(slot.classGroupId)}).`,
+        message: `${t.name} tidak terdaftar mengajar ${subjName(slot.subjectId)} ${LEVEL_LABELS[slot.level]} (${className(slot.classGroupId)}).`,
         slotId: slot.id,
         teacherId: t.id,
       });
@@ -158,30 +159,34 @@ export function validatePlan(input: ValidateInput): ValidationReport {
     }
   }
 
-  // ---- pre-flight understaffing per (section, subject) ----
-  const demand = new Map<string, number>(); // `${section}|${subjectId}` -> count
+  // ---- pre-flight understaffing per (section, jenjang, subject) ----
+  const demand = new Map<string, number>(); // `${section}|${level}|${subjectId}` -> count
   for (const s of slots) {
-    const key = `${s.section}|${s.subjectId}`;
+    const key = `${s.section}|${s.level}|${s.subjectId}`;
     demand.set(key, (demand.get(key) ?? 0) + 1);
   }
   for (const [key, count] of demand) {
-    const [section, subjectId] = key.split('|');
+    const [section, level, subjectId] = key.split('|') as [Slot['section'], Level, string];
     const subj = subjById.get(subjectId);
     if (subj?.isTahfidz) continue; // tahfidz has no max-2 limit
-    const gender = sectionToGender(section as Slot['section']);
-    const sampleSks = slots.find((s) => s.section === section && s.subjectId === subjectId)?.sks ?? config.meetingSks;
+    const gender = sectionToGender(section);
+    const qk = qualKey(level, subjectId);
+    const sampleSks =
+      slots.find((s) => s.section === section && s.level === level && s.subjectId === subjectId)?.sks ??
+      config.meetingSks;
     let supply = 0;
     for (const t of teachers) {
       if (!t.active || t.gender !== gender) continue;
-      if (!t.qualifiedSubjectIds.includes(subjectId)) continue;
+      if (!t.qualifiedKeys.includes(qk)) continue;
       supply += Math.min(config.maxClassesPerSubjectPerTeacher, Math.floor(t.maxSks / sampleSks));
     }
     if (count > supply) {
+      const where = `${subjName(subjectId)} ${LEVEL_LABELS[level]} (${SECTION_LABELS[section]})`;
       issues.push({
         level: 'error',
         code: 'SUBJECT_UNDERSTAFFED',
-        message: `${subjName(subjectId)} (${SECTION_LABELS[section as Slot['section']]}): butuh ${count} kelas, kapasitas pengajar hanya ${supply}.`,
-        suggestion: `Tambah pengajar ${subjName(subjectId)} ${SECTION_LABELS[section as Slot['section']]}.`,
+        message: `${where}: butuh ${count} kelas, kapasitas pengajar hanya ${supply}.`,
+        suggestion: `Tambah pengajar ${where}.`,
         subjectId,
       });
     }
