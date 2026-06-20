@@ -42,7 +42,7 @@ export default function TeacherCell({
         ? 'border-amber-300 bg-amber-50 dark:bg-amber-950/20'
         : tone === 'empty'
           ? 'border-dashed border-slate-300 dark:border-slate-700'
-          : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900';
+          : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200';
 
   // If the current teacher is no longer eligible, still surface them as an option.
   const hasCurrent = teacherId && eligible.some((e) => e.teacher.id === teacherId);
@@ -55,12 +55,12 @@ export default function TeacherCell({
         onChange={(e) => onChange(e.target.value || null)}
         aria-label={`Pengajar untuk ${subjectName ?? slot.subjectId}`}
       >
-        <option value="">— pilih —</option>
-        {!hasCurrent && teacherId && <option value={teacherId}>{currentName ?? '(tidak memenuhi syarat)'}</option>}
+        <option value="" className="dark:bg-slate-900 dark:text-slate-200">— pilih —</option>
+        {!hasCurrent && teacherId && <option value={teacherId} className="dark:bg-slate-900 dark:text-slate-200">{currentName ?? '(tidak memenuhi syarat)'}</option>}
         {eligible.length > 0 && (
-          <optgroup label="Memenuhi Syarat">
+          <optgroup label="Memenuhi Syarat" className="dark:bg-slate-900 dark:text-slate-200">
             {eligible.map((e) => (
-              <option key={e.teacher.id} value={e.teacher.id}>
+              <option key={e.teacher.id} value={e.teacher.id} className="dark:bg-slate-900 dark:text-slate-200">
                 {e.teacher.name} · {e.load}
                 {e.wouldExceedCap ? ' ⚠' : ''}
               </option>
@@ -68,9 +68,9 @@ export default function TeacherCell({
           </optgroup>
         )}
         {other.length > 0 && (
-          <optgroup label="Pengajar Lain (Tidak Memenuhi Syarat)">
+          <optgroup label="Pengajar Lain (Tidak Memenuhi Syarat)" className="dark:bg-slate-900 dark:text-slate-200">
             {other.map((e) => (
-              <option key={e.teacher.id} value={e.teacher.id}>
+              <option key={e.teacher.id} value={e.teacher.id} className="dark:bg-slate-900 dark:text-slate-200">
                 {e.teacher.name} · {e.load}
                 {e.wouldExceedCap ? ' ⚠' : ''}
               </option>
