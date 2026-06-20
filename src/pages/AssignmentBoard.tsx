@@ -4,11 +4,11 @@ import { useStore, useActivePlan } from '../store/appStore';
 import type { Gender, IssueCode, Slot, Teacher } from '../types/model';
 import { LEVEL_LABELS, SECTION_LABELS } from '../types/model';
 import { computeTeacherLoads, validatePlan } from '../solver/validate';
-import { eligibleTeachers, groupedClasses, subjMap } from '../lib/derived';
+import { eligibleTeachers, otherTeachers, groupedClasses, subjMap } from '../lib/derived';
 import { buildTeacherSchedules } from '../lib/exporters';
 import TeacherCell, { type CellTeacher } from '../components/TeacherCell';
 import MatrixPrint from '../components/MatrixPrint';
-import { PageHeader, EmptyState, StatCard } from '../components/ui';
+import { PageHeader, EmptyState, StatCard, Modal, Field } from '../components/ui';
 import { IconBolt, IconCheck, IconPrint, IconTrash, IconWarn } from '../components/icons';
 
 const HARD_SLOT_CODES: IssueCode[] = ['GENDER_MISMATCH', 'NOT_QUALIFIED'];
@@ -23,11 +23,13 @@ export default function AssignmentBoard() {
   const clearAssignments = useStore((s) => s.clearAssignments);
   const setAssignment = useStore((s) => s.setAssignment);
   const toggleLock = useStore((s) => s.toggleLock);
+  const updateTeacher = useStore((s) => s.updateTeacher);
 
   const [showIssues, setShowIssues] = useState(false);
   const [boardView, setBoardView] = useState<BoardView>('matrix');
   const [matrixOrientation, setMatrixOrientation] = useState<MatrixOrientation>('classRows');
   const [teacherFilter, setTeacherFilter] = useState('all');
+  const [quickEditState, setQuickEditState] = useState<{ teacherId: string; slot: Slot } | null>(null);
 
   const derived = useMemo(() => {
     if (!plan) return null;
@@ -98,6 +100,12 @@ export default function AssignmentBoard() {
         return { teacher: t, load, wouldExceedCap: t.id !== teacherId && load + slot.sks > t.maxSks };
       })
       .sort((x, y) => x.teacher.name.localeCompare(y.teacher.name));
+    const other: CellTeacher[] = otherTeachers(slot, teachers)
+      .map((t) => {
+        const load = loads.get(t.id)?.load ?? 0;
+        return { teacher: t, load, wouldExceedCap: t.id !== teacherId && load + slot.sks > t.maxSks };
+      })
+      .sort((x, y) => x.teacher.name.localeCompare(y.teacher.name));
     const tTone = teacherId ? teacherTone.get(teacherId) : undefined;
     const tone: 'ok' | 'warn' | 'error' | 'empty' = !teacherId
       ? 'empty'
@@ -108,7 +116,7 @@ export default function AssignmentBoard() {
           : 'ok';
     const currentName = teacherId ? teachers.find((t) => t.id === teacherId)?.name : undefined;
     const dupCount = teacherId ? (classTeacherCount.get(slot.classGroupId)?.get(teacherId) ?? 0) : 0;
-    return { teacherId, locked, eligible, tone, currentName, dupCount };
+    return { teacherId, locked, eligible, other, tone, currentName, dupCount };
   };
 
   const getSlot = (classGroupId: string, subjectId: string) => slotByClassSubject.get(`${classGroupId}|${subjectId}`);
@@ -121,12 +129,14 @@ export default function AssignmentBoard() {
         teacherId={cell.teacherId}
         locked={cell.locked}
         eligible={cell.eligible}
+        other={cell.other}
         currentName={cell.currentName}
         subjectName={derived.sm.get(slot.subjectId)?.name}
         tone={cell.tone}
         dupCount={cell.dupCount}
         onChange={(tid) => setAssignment(slot.id, tid)}
         onToggleLock={() => toggleLock(slot.id)}
+        onOpenQuickEdit={(tid) => setQuickEditState({ teacherId: tid, slot })}
       />
     );
   };
@@ -531,6 +541,62 @@ export default function AssignmentBoard() {
       )}
       </div>
       <MatrixPrint plan={plan} teachers={teachers} subjects={subjects} />
+
+      {quickEditState && (() => {
+        const t = teachers.find((x) => x.id === quickEditState.teacherId);
+        if (!t) return null;
+        const { slot } = quickEditState;
+        const subject = derived.sm.get(slot.subjectId);
+        const qk = `${slot.level}:${slot.subjectId}`;
+        const isQual = t.qualifiedKeys.includes(qk);
+        return (
+          <Modal title="Pengaturan Cepat Pengajar" open={true} onClose={() => setQuickEditState(null)}>
+            <div className="space-y-4">
+              <div>
+                <p className="font-semibold text-brand-600 dark:text-brand-400">{t.name}</p>
+                <p className="text-sm text-slate-500">Mata kuliah: {subject?.name}</p>
+              </div>
+              <Field label="Beban Maksimal SKS">
+                <input
+                  type="number"
+                  className="input"
+                  value={t.maxSks}
+                  onChange={(e) => updateTeacher(t.id, { maxSks: Number(e.target.value) || 0 })}
+                />
+              </Field>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="qe-qual"
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900"
+                  checked={isQual}
+                  onChange={(e) => {
+                    const keys = new Set(t.qualifiedKeys);
+                    if (e.target.checked) keys.add(qk);
+                    else keys.delete(qk);
+                    updateTeacher(t.id, { qualifiedKeys: [...keys] });
+                  }}
+                />
+                <label htmlFor="qe-qual" className="text-sm font-medium">Memenuhi syarat untuk matkul ini</label>
+              </div>
+              <hr className="border-slate-100 dark:border-slate-800" />
+              <button
+                onClick={() => {
+                  const keys = new Set(t.ignoredKeys ?? []);
+                  keys.add(qk);
+                  updateTeacher(t.id, { ignoredKeys: [...keys] });
+                  // If we ignore, unassign if assigned?
+                  // Optional: if currently assigned, setAssignment(slot.id, null)
+                  setQuickEditState(null);
+                }}
+                className="w-full rounded-lg border border-rose-200 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-900/50 dark:hover:bg-rose-950/30"
+              >
+                Abaikan pengajar ini untuk matkul ini
+              </button>
+            </div>
+          </Modal>
+        );
+      })()}
     </>
   );
 }

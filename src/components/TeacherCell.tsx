@@ -1,5 +1,5 @@
 import type { Slot, Teacher } from '../types/model';
-import { IconLock, IconUnlock } from './icons';
+import { IconLock, IconUnlock, IconEdit } from './icons';
 
 export interface CellTeacher {
   teacher: Teacher;
@@ -12,17 +12,20 @@ export default function TeacherCell({
   teacherId,
   locked,
   eligible,
+  other = [],
   currentName,
   subjectName,
   tone,
   dupCount = 0,
   onChange,
   onToggleLock,
+  onOpenQuickEdit,
 }: {
   slot: Slot;
   teacherId: string | null;
   locked: boolean;
   eligible: CellTeacher[];
+  other?: CellTeacher[];
   currentName?: string;
   subjectName?: string;
   tone: 'ok' | 'warn' | 'error' | 'empty';
@@ -30,6 +33,7 @@ export default function TeacherCell({
   dupCount?: number;
   onChange: (teacherId: string | null) => void;
   onToggleLock: () => void;
+  onOpenQuickEdit?: (teacherId: string) => void;
 }) {
   const ring =
     tone === 'error'
@@ -53,12 +57,26 @@ export default function TeacherCell({
       >
         <option value="">— pilih —</option>
         {!hasCurrent && teacherId && <option value={teacherId}>{currentName ?? '(tidak memenuhi syarat)'}</option>}
-        {eligible.map((e) => (
-          <option key={e.teacher.id} value={e.teacher.id}>
-            {e.teacher.name} · {e.load}
-            {e.wouldExceedCap ? ' ⚠' : ''}
-          </option>
-        ))}
+        {eligible.length > 0 && (
+          <optgroup label="Memenuhi Syarat">
+            {eligible.map((e) => (
+              <option key={e.teacher.id} value={e.teacher.id}>
+                {e.teacher.name} · {e.load}
+                {e.wouldExceedCap ? ' ⚠' : ''}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        {other.length > 0 && (
+          <optgroup label="Pengajar Lain (Tidak Memenuhi Syarat)">
+            {other.map((e) => (
+              <option key={e.teacher.id} value={e.teacher.id}>
+                {e.teacher.name} · {e.load}
+                {e.wouldExceedCap ? ' ⚠' : ''}
+              </option>
+            ))}
+          </optgroup>
+        )}
       </select>
       {teacherId && dupCount >= 2 && (
         <span
@@ -76,6 +94,16 @@ export default function TeacherCell({
           title={locked ? 'Terkunci (tidak diubah saat auto)' : 'Kunci agar tidak diubah saat auto'}
         >
           {locked ? <IconLock width={14} height={14} /> : <IconUnlock width={14} height={14} />}
+        </button>
+      )}
+      {teacherId && onOpenQuickEdit && (
+        <button
+          onClick={() => onOpenQuickEdit(teacherId)}
+          className="shrink-0 rounded p-1 text-slate-300 hover:text-brand-500"
+          aria-label="Pengaturan Cepat"
+          title="Ubah SKS atau Kualifikasi Matkul"
+        >
+          <IconEdit width={14} height={14} />
         </button>
       )}
     </div>

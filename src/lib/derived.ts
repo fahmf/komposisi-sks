@@ -51,7 +51,14 @@ export function subjectsForClass(plan: SemesterPlan, cg: ClassGroup) {
 export function eligibleTeachers(slot: Slot, teachers: Teacher[]): Teacher[] {
   const gender = sectionToGender(slot.section);
   const key = qualKey(slot.level, slot.subjectId);
-  return teachers.filter((t) => t.active && t.gender === gender && t.qualifiedKeys.includes(key));
+  return teachers.filter((t) => t.active && t.gender === gender && t.qualifiedKeys.includes(key) && !t.ignoredKeys?.includes(key));
+}
+
+/** Active teachers of the same gender who are NOT qualified, but also NOT ignored for this subject. */
+export function otherTeachers(slot: Slot, teachers: Teacher[]): Teacher[] {
+  const gender = sectionToGender(slot.section);
+  const key = qualKey(slot.level, slot.subjectId);
+  return teachers.filter((t) => t.active && t.gender === gender && !t.qualifiedKeys.includes(key) && !t.ignoredKeys?.includes(key));
 }
 
 /** Curriculum total SKS per (level, semester) for the grid =32 check. */

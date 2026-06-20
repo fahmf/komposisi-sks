@@ -27,6 +27,7 @@ export const teacherSchema = z.object({
   name: z.string(),
   gender: genderSchema,
   qualifiedKeys: z.array(z.string()),
+  ignoredKeys: z.array(z.string()).optional(),
   maxSks: z.number().finite(),
   active: z.boolean(),
   note: z.string().optional(),

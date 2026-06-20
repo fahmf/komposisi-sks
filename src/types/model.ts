@@ -39,6 +39,9 @@ export interface Teacher {
    *  (e.g. "ILP:subj-qiraah"). A teacher qualified for a subject in Pemula is NOT
    *  automatically qualified for it in Lanjutan. Use `qualKey`/`parseQualKey`. */
   qualifiedKeys: string[];
+  /** Subjects that this teacher should be ignored for, preventing them from
+   *  being suggested. Format is the same as qualifiedKeys. */
+  ignoredKeys?: string[];
   /** Hard cap on SKS this teacher may take in THIS program (captures
    *  capacity shared with other divisions). */
   maxSks: number;
