@@ -47,10 +47,17 @@ export default function TeacherCell({
   // If the current teacher is no longer eligible, still surface them as an option.
   const hasCurrent = teacherId && eligible.some((e) => e.teacher.id === teacherId);
 
+  const selectBg =
+    tone === 'error'
+      ? 'dark:bg-[#2c1016]' // approximation of dark:bg-rose-950
+      : tone === 'warn'
+        ? 'dark:bg-[#291400]' // approximation of dark:bg-amber-950
+        : 'dark:bg-slate-900';
+
   return (
     <div className={`flex items-center gap-1 rounded-lg border px-1.5 py-1 ${ring}`}>
       <select
-        className="min-w-0 flex-1 bg-transparent py-1 text-sm focus:outline-none"
+        className={`min-w-0 flex-1 bg-transparent py-1 text-sm focus:outline-none ${selectBg}`}
         value={teacherId ?? ''}
         onChange={(e) => onChange(e.target.value || null)}
         aria-label={`Pengajar untuk ${subjectName ?? slot.subjectId}`}
