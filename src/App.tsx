@@ -9,6 +9,7 @@ import Classes from './pages/Classes';
 import AssignmentBoard from './pages/AssignmentBoard';
 import TeacherSchedule from './pages/TeacherSchedule';
 import ExportPage from './pages/ExportPage';
+import ComparePlans from './pages/ComparePlans';
 import Settings from './pages/Settings';
 
 export default function App() {
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/subjects" element={<Subjects />} />
         <Route path="/teacher/:id" element={<TeacherSchedule />} />
         <Route path="/export" element={<ExportPage />} />
+        <Route path="/compare" element={<ComparePlans />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
     </NavShell>

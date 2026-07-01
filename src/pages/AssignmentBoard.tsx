@@ -9,7 +9,7 @@ import { buildTeacherSchedules } from '../lib/exporters';
 import TeacherCell, { type CellTeacher } from '../components/TeacherCell';
 import MatrixPrint from '../components/MatrixPrint';
 import { PageHeader, EmptyState, StatCard, Modal, Field } from '../components/ui';
-import { IconBolt, IconCheck, IconPrint, IconTrash, IconWarn } from '../components/icons';
+import { IconBolt, IconCheck, IconPrint, IconTrash, IconWarn, IconPlus, IconCopy } from '../components/icons';
 
 const HARD_SLOT_CODES: IssueCode[] = ['GENDER_MISMATCH', 'NOT_QUALIFIED'];
 type BoardView = 'matrix' | 'teacher';
@@ -24,6 +24,8 @@ export default function AssignmentBoard() {
   const setAssignment = useStore((s) => s.setAssignment);
   const toggleLock = useStore((s) => s.toggleLock);
   const updateTeacher = useStore((s) => s.updateTeacher);
+  const createPlan = useStore((s) => s.createPlan);
+  const duplicatePlan = useStore((s) => s.duplicatePlan);
 
   const [showIssues, setShowIssues] = useState(false);
   const [boardView, setBoardView] = useState<BoardView>('matrix');
@@ -204,6 +206,27 @@ export default function AssignmentBoard() {
         subtitle={plan.name}
         actions={
           <>
+            <button
+              className="btn-outline btn-sm hidden sm:inline-flex"
+              onClick={() => {
+                const name = prompt('Nama skenario baru:', `${plan.name} (salinan)`);
+                if (name) duplicatePlan(plan.id, name);
+              }}
+              title="Simpan kondisi saat ini sebagai skenario baru"
+            >
+              <IconCopy width={16} height={16} /> Simpan Skenario
+            </button>
+            <button
+              className="btn-outline btn-sm hidden sm:inline-flex"
+              onClick={() => {
+                const name = prompt('Nama skenario kosong:', 'Skenario Baru');
+                if (name) createPlan(name);
+              }}
+              title="Buat skenario baru dengan kelas kosong"
+            >
+              <IconPlus width={16} height={16} /> Buat Skenario Kosong
+            </button>
+            <div className="hidden sm:block h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
             <button
               className="btn-outline"
               onClick={() => {

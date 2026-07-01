@@ -20,6 +20,7 @@ const NAV = [
   { to: '/teachers', label: 'Pengajar', icon: IconUsers },
   { to: '/classes', label: 'Kelas', icon: IconGrid },
   { to: '/subjects', label: 'Kurikulum', icon: IconBook },
+  { to: '/compare', label: 'Komparasi', icon: IconLayers },
   { to: '/export', label: 'Ekspor', icon: IconDownload },
   { to: '/settings', label: 'Pengaturan', icon: IconSettings },
 ];
