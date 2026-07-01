@@ -8,7 +8,7 @@ import { eligibleTeachers, otherTeachers, groupedClasses, subjMap } from '../lib
 import { buildTeacherSchedules } from '../lib/exporters';
 import TeacherCell, { type CellTeacher } from '../components/TeacherCell';
 import MatrixPrint from '../components/MatrixPrint';
-import { PageHeader, EmptyState, StatCard, Modal, Field } from '../components/ui';
+import { PageHeader, EmptyState, StatCard, Modal, Field, Drawer } from '../components/ui';
 import { IconBolt, IconCheck, IconPrint, IconTrash, IconWarn, IconPlus, IconCopy } from '../components/icons';
 
 const HARD_SLOT_CODES: IssueCode[] = ['GENDER_MISMATCH', 'NOT_QUALIFIED'];
@@ -32,6 +32,7 @@ export default function AssignmentBoard() {
   const [matrixOrientation, setMatrixOrientation] = useState<MatrixOrientation>('classRows');
   const [teacherFilter, setTeacherFilter] = useState('all');
   const [quickEditState, setQuickEditState] = useState<{ teacherId: string; slot: Slot } | null>(null);
+  const [sidebarTeacherId, setSidebarTeacherId] = useState<string | null>(null);
 
   const derived = useMemo(() => {
     if (!plan) return null;
@@ -174,10 +175,7 @@ export default function AssignmentBoard() {
       <button
         key={t.id}
         type="button"
-        onClick={() => {
-          setBoardView('teacher');
-          setTeacherFilter(t.id);
-        }}
+        onClick={() => setSidebarTeacherId(t.id)}
         className="card p-3 text-left transition hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
       >
         <div className="flex items-center justify-between">
@@ -617,8 +615,6 @@ export default function AssignmentBoard() {
                   const keys = new Set(t.ignoredKeys ?? []);
                   keys.add(qk);
                   updateTeacher(t.id, { ignoredKeys: [...keys] });
-                  // If we ignore, unassign if assigned?
-                  // Optional: if currently assigned, setAssignment(slot.id, null)
                   setQuickEditState(null);
                 }}
                 className="w-full rounded-lg border border-rose-200 py-2 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 dark:border-rose-900/50 dark:hover:bg-rose-950/30"
@@ -629,6 +625,60 @@ export default function AssignmentBoard() {
           </Modal>
         );
       })()}
+
+      <Drawer
+        open={!!sidebarTeacherId}
+        onClose={() => setSidebarTeacherId(null)}
+        title="Jadwal Pengajar"
+      >
+        {(() => {
+          if (!sidebarTeacherId) return null;
+          const schedule = scheduleByTeacher.get(sidebarTeacherId);
+          const t = teachers.find((x) => x.id === sidebarTeacherId);
+          if (!t) return null;
+          
+          return (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 dark:border-slate-800">
+                <div>
+                  <h3 className="font-bold">{t.name}</h3>
+                  <p className="text-xs text-slate-500">
+                    {t.gender === 'L' ? 'Putra' : 'Putri'} - Total {schedule?.totalSks ?? 0} SKS
+                  </p>
+                </div>
+                <Link to={`/teacher/${t.id}`} className="btn-outline btn-sm">
+                  <IconPrint width={14} height={14} /> Cetak
+                </Link>
+              </div>
+              
+              {!schedule || schedule.rows.length === 0 ? (
+                <p className="py-6 text-sm text-slate-400 text-center">Belum ada penugasan untuk pengajar ini.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800/50">
+                        <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-800">Kelas</th>
+                        <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-800">Mata kuliah</th>
+                        <th className="px-3 py-2 border-b border-slate-200 dark:border-slate-800 text-right">SKS</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {schedule.rows.map((row, i) => (
+                        <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                          <td className="px-3 py-2 font-medium">{row.kelas}</td>
+                          <td className="px-3 py-2">{row.mataKuliah}</td>
+                          <td className="px-3 py-2 text-right">{row.sks}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </Drawer>
     </>
   );
 }
