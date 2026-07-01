@@ -76,8 +76,16 @@ export default function AssignmentBoard() {
       if (!m) classTeacherCount.set(slot.classGroupId, (m = new Map()));
       m.set(tid, (m.get(tid) ?? 0) + 1);
     }
+    let totalSksNeeded = 0;
+    let totalSksAssigned = 0;
+    for (const slot of plan.slots) {
+      totalSksNeeded += slot.sks;
+      if (assignmentBySlot.get(slot.id)?.teacherId) {
+        totalSksAssigned += slot.sks;
+      }
+    }
     const assignedCount = plan.assignments.filter((a) => a.teacherId).length;
-    return { sm, report, loads, assignmentBySlot, slotByClassSubject, teacherTone, slotHardError, classTeacherCount, assignedCount };
+    return { sm, report, loads, assignmentBySlot, slotByClassSubject, teacherTone, slotHardError, classTeacherCount, assignedCount, totalSksNeeded, totalSksAssigned };
   }, [plan, teachers, subjects]);
 
   const teacherSchedules = useMemo(() => {
@@ -88,7 +96,7 @@ export default function AssignmentBoard() {
   if (!plan) return <EmptyState title="Belum ada semester aktif" hint="Buat semester di menu Pengaturan." />;
   if (!derived) return null;
 
-  const { report, loads, assignmentBySlot, slotByClassSubject, teacherTone, slotHardError, classTeacherCount, assignedCount } = derived;
+  const { report, loads, assignmentBySlot, slotByClassSubject, teacherTone, slotHardError, classTeacherCount, assignedCount, totalSksNeeded, totalSksAssigned } = derived;
   const groups = groupedClasses(plan);
   const totalSlots = plan.slots.length;
 
@@ -257,7 +265,8 @@ export default function AssignmentBoard() {
         />
       ) : (
         <>
-          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <StatCard label="SKS terpenuhi" value={`${totalSksAssigned}/${totalSksNeeded}`} tone={totalSksAssigned === totalSksNeeded ? 'good' : 'warn'} />
             <StatCard label="Slot terisi" value={`${assignedCount}/${totalSlots}`} tone={assignedCount === totalSlots ? 'good' : 'warn'} />
             <StatCard label="Masalah (error)" value={report.errorCount} tone={report.errorCount ? 'bad' : 'good'} />
             <StatCard label="Peringatan" value={report.warningCount} tone={report.warningCount ? 'warn' : 'good'} />
