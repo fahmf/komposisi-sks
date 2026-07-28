@@ -104,30 +104,6 @@
   animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* ---------- aurora background (see components/ui/animated-background.tsx) ----------
-   Global because Vite has no styled-jsx; this file already hosts the app's
-   keyframes. Drift only — no rotation — so the light fields stay soft and the
-   compositor only ever animates transforms. */
-@keyframes aurora1 {
-  0%   { transform: translate3d(-6%, -4%, 0) scale(1); }
-  50%  { transform: translate3d(4%, 3%, 0) scale(1.12); }
-  100% { transform: translate3d(7%, -2%, 0) scale(0.94); }
-}
-@keyframes aurora2 {
-  0%   { transform: translate3d(6%, 3%, 0) scale(0.9); }
-  50%  { transform: translate3d(-3%, -2%, 0) scale(1.15); }
-  100% { transform: translate3d(-7%, 5%, 0) scale(0.95); }
-}
-@keyframes aurora3 {
-  0%   { transform: translate3d(-4%, 2%, 0) scale(1.1); }
-  50%  { transform: translate3d(6%, -4%, 0) scale(0.88); }
-  100% { transform: translate3d(-2%, 4%, 0) scale(1.05); }
-}
-@keyframes aurora4 {
-  0%   { transform: translate3d(3%, -2%, 0) scale(0.92); }
-  50%  { transform: translate3d(-5%, 1%, 0) scale(1.12); }
-  100% { transform: translate3d(4%, -5%, 0) scale(0.88); }
-}
 
 @media (prefers-reduced-motion: reduce) {
   *,
