@@ -39,8 +39,8 @@ export default function Dashboard() {
   return (
     <>
       <div className="mb-5">
-        <p className="text-sm text-slate-500">Semester aktif</p>
-        <h1 className="text-2xl font-bold sm:text-3xl">{plan.name}</h1>
+        <p className="text-xs font-semibold uppercase tracking-wide text-brand-600 dark:text-brand-400">Semester aktif</p>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{plan.name}</h1>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -58,7 +58,7 @@ export default function Dashboard() {
             <Link
               key={s.to}
               to={s.to}
-              className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition hover:shadow-sm ${
+              className={`flex items-center gap-3 rounded-xl border px-4 py-3 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card ${
                 s.done ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/50 dark:bg-emerald-950/20' : 'border-slate-200 dark:border-slate-800'
               }`}
             >
