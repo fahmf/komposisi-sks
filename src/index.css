@@ -9,16 +9,6 @@
   body {
     @apply bg-slate-50 text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-100;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
-    /* Soft brand-tinted background wash for depth without distraction. */
-    background-image:
-      radial-gradient(60rem 60rem at 108% -8%, rgb(58 172 131 / 0.10), transparent 60%),
-      radial-gradient(48rem 48rem at -12% 6%, rgb(35 102 78 / 0.07), transparent 55%);
-    background-attachment: fixed;
-  }
-  .dark body {
-    background-image:
-      radial-gradient(60rem 60rem at 108% -8%, rgb(58 172 131 / 0.12), transparent 60%),
-      radial-gradient(48rem 48rem at -12% 6%, rgb(31 143 104 / 0.10), transparent 55%);
   }
   :root {
     color-scheme: light;
@@ -112,6 +102,31 @@
 }
 .animate-slide-in-right {
   animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ---------- aurora background (see components/ui/animated-background.tsx) ----------
+   Global because Vite has no styled-jsx; this file already hosts the app's
+   keyframes. Drift only — no rotation — so the light fields stay soft and the
+   compositor only ever animates transforms. */
+@keyframes aurora1 {
+  0%   { transform: translate3d(-6%, -4%, 0) scale(1); }
+  50%  { transform: translate3d(4%, 3%, 0) scale(1.12); }
+  100% { transform: translate3d(7%, -2%, 0) scale(0.94); }
+}
+@keyframes aurora2 {
+  0%   { transform: translate3d(6%, 3%, 0) scale(0.9); }
+  50%  { transform: translate3d(-3%, -2%, 0) scale(1.15); }
+  100% { transform: translate3d(-7%, 5%, 0) scale(0.95); }
+}
+@keyframes aurora3 {
+  0%   { transform: translate3d(-4%, 2%, 0) scale(1.1); }
+  50%  { transform: translate3d(6%, -4%, 0) scale(0.88); }
+  100% { transform: translate3d(-2%, 4%, 0) scale(1.05); }
+}
+@keyframes aurora4 {
+  0%   { transform: translate3d(3%, -2%, 0) scale(0.92); }
+  50%  { transform: translate3d(-5%, 1%, 0) scale(1.12); }
+  100% { transform: translate3d(4%, -5%, 0) scale(0.88); }
 }
 
 @media (prefers-reduced-motion: reduce) {

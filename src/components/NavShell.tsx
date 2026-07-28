@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useStore } from '../store/appStore';
+import { AuroraBackdrop } from '@/components/ui/animated-background';
 import {
   IconBolt,
   IconBook,
@@ -35,8 +36,10 @@ export default function NavShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen lg:flex">
+      <AuroraBackdrop />
+
       {/* Desktop sidebar */}
-      <aside className="no-print sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-slate-200/80 bg-white/70 px-3 py-5 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/70 lg:flex">
+      <aside className="no-print sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-slate-200/80 bg-white/60 px-3 py-5 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/60 lg:flex">
         <div className="mb-6 flex items-center gap-2.5 px-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient text-white shadow-pop">
             <IconLayers width={18} height={18} />

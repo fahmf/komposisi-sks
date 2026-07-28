@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { IconX } from './icons';
+import { IconX } from '../icons';
 
 export function Modal({
   open,
