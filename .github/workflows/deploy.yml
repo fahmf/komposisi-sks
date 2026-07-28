@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, claude/sharp-tesla-fvnctk, claude/frontend-design-aesthetic-5wm5ss]
+    branches: [main, claude/sharp-tesla-fvnctk]
   workflow_dispatch:
 
 permissions:
